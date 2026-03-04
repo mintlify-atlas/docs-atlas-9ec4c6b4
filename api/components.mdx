@@ -326,3 +326,57 @@ Shown when user has voted:
   </div>
 )}
 ```
+
+---
+
+## Supporting UI Components
+
+VoteLab includes several presentational components that enhance the user interface but are not typically used in third-party integrations:
+
+### Header
+
+Navigation bar with wallet connection and protocol status indicator.
+
+```typescript
+import { Header } from "@/components/Header";
+```
+
+**Features:**
+- VoteLab branding with animated text
+- RainbowKit ConnectButton integration
+- Live protocol status ("Protocol Active" / "System Standby")
+- Responsive design with mobile support
+
+### StatusBadge
+
+Displays the current workflow state as a styled badge.
+
+```typescript
+import { StatusBadge } from "@/components/StatusBadge";
+```
+
+**States:**
+- `REGISTERING`: "System: Initializing" (gray)
+- `VOTING`: "Network Live: Voting" (green with pulse animation)
+- `RESETTING`: "Protocol: Resetting" (amber)
+
+### WalletNotConnected
+
+Fallback component shown when no wallet is connected.
+
+```typescript
+import { WalletNotConnected } from "@/components/WalletNotConnected";
+```
+
+Displays a centered card with wallet icon and connection prompt.
+
+### Animation Components
+
+VoteLab uses several custom animation components for visual effects:
+
+- **DecryptedText**: Animated text reveal effect
+- **SpotlightCard**: Card with spotlight hover effect  
+- **VariableProximity**: Text that responds to cursor proximity
+- **FadeContent**: Fade-in animation wrapper
+
+These are internal components optimized for the VoteLab interface and not part of the public API.
