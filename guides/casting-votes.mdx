@@ -1,0 +1,187 @@
+---
+title: Casting Your Vote
+description: Step-by-step guide to participating in VoteLab elections and casting your vote
+---
+
+Casting a vote in VoteLab requires a connected wallet and payment of a small entry fee. Each vote is recorded on-chain and contributes to the community prize pool.
+
+## Prerequisites
+
+Before you can cast a vote, ensure:
+
+- Your wallet is [connected](/guides/connecting-wallet) to VoteLab
+- You're on the correct network (Anvil or Sepolia)
+- You have at least **0.01 ETH** plus gas fees in your wallet
+- The voting session is in the **VOTING** phase (workflow station 1)
+
+<Warning>
+You can only vote once per election session. Once you've cast your vote, you cannot change it until the next election begins.
+</Warning>
+
+## Entry Fee
+
+Each vote requires a payment of **0.01 ETH**, which is added to the community prize pool. This entry fee:
+
+- Prevents spam and Sybil attacks
+- Creates a prize pool for the community
+- Ensures participants have skin in the game
+
+<Info>
+The prize pool is visible on the dashboard and accumulates throughout the voting session.
+</Info>
+
+## How to Cast Your Vote
+
+<Steps>
+  <Step title="Wait for Voting Phase">
+    Voting is only allowed during the **VOTING** phase. You'll see the proposal question and two voting cards displayed on the dashboard.
+    
+    If you see "Governance Standby," the voting hasn't started yet. Wait for the contract owner to start the voting session.
+  </Step>
+
+  <Step title="Review the Proposal">
+    Read the proposal question carefully. For example:
+    
+    > "Which fruit provides the best energy for coding sessions?"
+    
+    Review both options and their current vote tallies before making your decision.
+  </Step>
+
+  <Step title="Select Your Choice">
+    Click the "Cast Your Vote" button on the voting card for your preferred option:
+    
+    - **Option A** (optionId: 0) - Displayed on the left card
+    - **Option B** (optionId: 1) - Displayed on the right card
+    
+    Each card shows:
+    - Current vote count ("Live Support")
+    - Percentage of total votes ("Network Share")
+    - Visual progress bar
+  </Step>
+
+  <Step title="Confirm the Transaction">
+    Your wallet will prompt you to approve the transaction. Review the details:
+    
+    - **Amount**: 0.01 ETH (entry fee)
+    - **Gas fee**: Variable based on network congestion
+    - **Total**: 0.01 ETH + gas
+    
+    Click "Confirm" in your wallet to proceed.
+  </Step>
+
+  <Step title="Wait for Confirmation">
+    The voting card will display a "Processing..." state with a loading animation. Wait for the transaction to be confirmed on-chain.
+    
+    This typically takes:
+    - **Anvil**: Nearly instant (local network)
+    - **Sepolia**: 15-30 seconds (testnet)
+  </Step>
+
+  <Step title="Verify Your Vote">
+    Once confirmed, you'll see:
+    
+    - The button changes to "Vote Recorded" with a green checkmark
+    - A green badge appears: "Recorded On-Chain"
+    - The vote tally updates automatically
+    - You can no longer vote again in this session
+  </Step>
+</Steps>
+
+## Vote Function Implementation
+
+Here's how the `castVote` function works under the hood:
+
+```typescript
+const castVote = (option: number) => {
+    writeContract({
+        address: ContractAddress,
+        abi: ABI,
+        functionName: "vote",
+        args: [BigInt(option)],
+        value: parseEther("0.01"),
+    });
+};
+```
+
+The function:
+- Accepts an `option` parameter (0 or 1)
+- Calls the `vote` function on the smart contract
+- Sends 0.01 ETH as the entry fee using `parseEther("0.01")`
+- Records your vote on-chain with your wallet address
+
+<Note>
+The application automatically refetches all data after a successful transaction, including vote counts, prize pool, and your voting status.
+</Note>
+
+## Voting States
+
+The voting card adapts based on the current state:
+
+### Active Voting
+- **Button**: White background, "Cast Your Vote" text
+- **Behavior**: Clickable and ready to accept votes
+- **Condition**: Voting is open AND you haven't voted
+
+### Processing
+- **Button**: Shows loading spinner and "Processing..." text
+- **Behavior**: Disabled while transaction confirms
+- **Condition**: Transaction submitted, waiting for confirmation
+
+### Already Voted
+- **Button**: Green background, "Vote Recorded" text with checkmark
+- **Behavior**: Disabled, cannot vote again
+- **Condition**: You've already voted in this election
+
+### Voting Closed
+- **Button**: Gray background, disabled state
+- **Behavior**: Clicking does nothing
+- **Condition**: Voting session is not in VOTING phase
+
+## After Voting
+
+Once you've cast your vote:
+
+1. Your vote is permanently recorded on-chain
+2. Your 0.01 ETH is added to the prize pool
+3. You can still view live results as others vote
+4. You'll see the "Recorded On-Chain" badge on the dashboard
+5. You cannot vote again until the next election session
+
+<Info>
+The contract tracks which election ID you voted in. When a new election starts (after reset), you'll be able to vote again.
+</Info>
+
+## Troubleshooting
+
+### Button is Disabled
+
+**Possible reasons:**
+- Voting hasn't started yet (workflow station 0)
+- Voting has ended (workflow station 2)
+- You've already voted in this session
+- Transaction is processing
+
+### Transaction Failed
+
+**Common causes:**
+- Insufficient ETH balance (need 0.01 + gas)
+- Wrong network selected
+- You've already voted
+- Voting phase has ended
+
+**Solution:** Check your wallet balance and network, then try again.
+
+### Vote Not Updating
+
+**If your vote doesn't appear:**
+- Wait for transaction confirmation (check your wallet)
+- Refresh the page to force data reload
+- Verify the transaction on a block explorer
+
+## Next Steps
+
+After casting your vote:
+
+- [View real-time results](/guides/viewing-results) as votes come in
+- Monitor the prize pool accumulation
+- Wait for the election results to be finalized

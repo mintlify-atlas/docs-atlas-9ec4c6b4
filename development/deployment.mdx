@@ -1,0 +1,556 @@
+---
+title: 'Deployment'
+description: 'Deploy VoteLab frontend and smart contracts to production'
+---
+
+## Deployment Overview
+
+VoteLab consists of two deployment components:
+
+<CardGroup cols={2}>
+  <Card title="Frontend Application" icon="browser">
+    Next.js 16 app deployed to hosting platforms
+  </Card>
+  <Card title="Smart Contract" icon="file-contract">
+    Solidity contract deployed to Ethereum networks
+  </Card>
+</CardGroup>
+
+<Warning>
+  Always test deployments on testnets (Sepolia, Goerli) before deploying to mainnet.
+</Warning>
+
+## Frontend Deployment
+
+### Building for Production
+
+Create an optimized production build:
+
+<Steps>
+  <Step title="Run Production Build">
+    ```bash
+    npm run build
+    ```
+
+    This command:
+    - Compiles TypeScript to JavaScript
+    - Optimizes React components with React Compiler
+    - Bundles assets with webpack
+    - Generates static pages where possible
+    - Minifies code for production
+  </Step>
+
+  <Step title="Test Production Build Locally">
+    ```bash
+    npm start
+    ```
+
+    Runs the production server on `http://localhost:3000`
+  </Step>
+
+  <Step title="Verify Build Output">
+    Check the `.next` directory for build artifacts:
+
+    ```bash
+    ls -la .next/
+    ```
+  </Step>
+</Steps>
+
+### Next.js Configuration
+
+The project uses a minimal Next.js configuration with React Compiler enabled:
+
+```typescript title="next.config.ts"
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactCompiler: true,  // Optimizes React performance
+};
+
+export default nextConfig;
+```
+
+<Tip>
+  React Compiler automatically optimizes component re-renders, reducing the need for manual `useMemo` and `useCallback`.
+</Tip>
+
+## Deployment Platforms
+
+### Vercel (Recommended)
+
+Vercel is the optimal choice for Next.js applications:
+
+<Steps>
+  <Step title="Connect Repository">
+    1. Visit [vercel.com](https://vercel.com)
+    2. Click "Import Project"
+    3. Connect your GitHub repository
+    4. Select the `Voting-Dapp` repository
+  </Step>
+
+  <Step title="Configure Project">
+    Vercel auto-detects Next.js projects:
+
+    - **Framework Preset**: Next.js
+    - **Root Directory**: `frontend`
+    - **Build Command**: `npm run build`
+    - **Output Directory**: `.next`
+    - **Install Command**: `npm install`
+  </Step>
+
+  <Step title="Set Environment Variables">
+    Configure any required environment variables in Vercel dashboard:
+
+    <Note>
+      VoteLab connects to public networks, so no API keys are required for basic deployment.
+    </Note>
+  </Step>
+
+  <Step title="Deploy">
+    Click "Deploy" and Vercel will:
+    - Install dependencies
+    - Run the build
+    - Deploy to a production URL
+    - Set up automatic deployments for future commits
+  </Step>
+</Steps>
+
+### Netlify
+
+Alternative deployment to Netlify:
+
+```toml title="netlify.toml"
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+```
+
+### Docker Deployment
+
+For containerized deployments:
+
+```dockerfile title="Dockerfile"
+FROM node:18-alpine AS base
+
+# Install dependencies
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Build application
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN npm run build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT 3000
+
+CMD ["node", "server.js"]
+```
+
+<CodeGroup>
+```bash Build Image
+docker build -t votelab-frontend .
+```
+
+```bash Run Container
+docker run -p 3000:3000 votelab-frontend
+```
+</CodeGroup>
+
+## Smart Contract Deployment
+
+### Prerequisites
+
+<Steps>
+  <Step title="Install Foundry">
+    ```bash
+    curl -L https://foundry.paradigm.xyz | bash
+    foundryup
+    ```
+  </Step>
+
+  <Step title="Clone Contract Repository">
+    ```bash
+    git clone https://github.com/Pragyat-Nikunj/Smart-Voting-Contract.git
+    cd Smart-Voting-Contract
+    ```
+  </Step>
+
+  <Step title="Set Up Environment">
+    Create a `.env` file:
+
+    ```bash title=".env"
+    PRIVATE_KEY=your_private_key_here
+    RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+    ETHERSCAN_API_KEY=your_etherscan_api_key
+    ```
+
+    <Warning>
+      Never commit `.env` files to version control. Use a hardware wallet or secure key management for mainnet deployments.
+    </Warning>
+  </Step>
+</Steps>
+
+### Testnet Deployment
+
+Deploy to Sepolia testnet first:
+
+<Steps>
+  <Step title="Compile Contract">
+    ```bash
+    forge build
+    ```
+
+    Verify compilation succeeds without errors.
+  </Step>
+
+  <Step title="Run Tests">
+    ```bash
+    forge test
+    ```
+
+    Ensure all tests pass before deployment.
+  </Step>
+
+  <Step title="Deploy to Sepolia">
+    ```bash
+    forge create src/MemberVote.sol:MemberVote \
+      --rpc-url $RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --constructor-args 100000000000000000 \
+      --verify
+    ```
+
+    Constructor argument: Entry fee in wei (0.1 ETH = 100000000000000000 wei)
+  </Step>
+
+  <Step title="Verify Contract">
+    If auto-verification fails:
+
+    ```bash
+    forge verify-contract \
+      --chain-id 11155111 \
+      --constructor-args $(cast abi-encode "constructor(uint256)" 100000000000000000) \
+      CONTRACT_ADDRESS \
+      src/MemberVote.sol:MemberVote
+    ```
+  </Step>
+</Steps>
+
+### Mainnet Deployment
+
+<Warning>
+  Mainnet deployments involve real funds. Triple-check everything:
+  - Contract code is audited
+  - Tests achieve 100% coverage
+  - Constructor parameters are correct
+  - You have sufficient ETH for gas
+</Warning>
+
+<Steps>
+  <Step title="Audit Contract">
+    Before mainnet deployment:
+    - Conduct professional security audit
+    - Review all access controls
+    - Test on testnets for at least 1 week
+    - Validate financial logic
+  </Step>
+
+  <Step title="Deploy to Mainnet">
+    ```bash
+    forge create src/MemberVote.sol:MemberVote \
+      --rpc-url https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY \
+      --private-key $PRIVATE_KEY \
+      --constructor-args 100000000000000000 \
+      --verify
+    ```
+  </Step>
+
+  <Step title="Update Frontend Configuration">
+    Update contract address in frontend:
+
+    ```typescript title="src/config/contracts.ts"
+    export const VOTELAB_ADDRESS = '0x...' as `0x${string}`;
+    ```
+  </Step>
+
+  <Step title="Redeploy Frontend">
+    Rebuild and redeploy frontend with new contract address:
+
+    ```bash
+    npm run build
+    # Deploy to Vercel/Netlify
+    ```
+  </Step>
+</Steps>
+
+## Contract Architecture
+
+### State Machine
+
+The contract operates on a three-stage finite state machine:
+
+```solidity
+enum WorkflowStation {
+    Registering,  // Stage 0: Admin prepares proposals
+    Voting,       // Stage 1: Users cast votes
+    Resetting     // Stage 2: Results locked, funds withdrawable
+}
+```
+
+<AccordionGroup>
+  <Accordion title="Stage 0: Registering">
+    - Voting is disabled
+    - Admin prepares election
+    - No votes can be cast
+    - Owner can transition to Voting
+  </Accordion>
+
+  <Accordion title="Stage 1: Voting">
+    - Users can cast votes
+    - Entry fee required (e.g., 0.1 ETH)
+    - Each address votes once
+    - Vote counts increment
+    - Owner can close voting
+  </Accordion>
+
+  <Accordion title="Stage 2: Resetting">
+    - Voting closed
+    - Results preserved for frontend
+    - Owner can withdraw collected fees
+    - Owner can reset to start new election
+  </Accordion>
+</AccordionGroup>
+
+### Key Functions
+
+<CardGroup cols={2}>
+  <Card title="vote(uint256 optionId)" icon="check-to-slot">
+    Cast a vote during Voting phase
+  </Card>
+  <Card title="startVote()" icon="play">
+    Owner: Transition from Registering to Voting
+  </Card>
+  <Card title="closeVote()" icon="stop">
+    Owner: Transition from Voting to Resetting
+  </Card>
+  <Card title="withdraw()" icon="money-bill-transfer">
+    Owner: Withdraw collected fees
+  </Card>
+</CardGroup>
+
+## Post-Deployment
+
+### Frontend Verification
+
+<Steps>
+  <Step title="Test Wallet Connection">
+    - Connect MetaMask
+    - Verify correct network
+    - Check wallet UI displays properly
+  </Step>
+
+  <Step title="Test Contract Interaction">
+    - Read contract state (votes, workflow station)
+    - Test voting functionality
+    - Verify admin controls (if owner)
+  </Step>
+
+  <Step title="Monitor Performance">
+    Use Vercel Analytics:
+    - Page load times
+    - Web Vitals (LCP, FID, CLS)
+    - Error tracking
+  </Step>
+</Steps>
+
+### Contract Verification
+
+<Steps>
+  <Step title="Verify on Etherscan">
+    Ensure contract is verified at:
+    - Sepolia: `https://sepolia.etherscan.io/address/YOUR_ADDRESS`
+    - Mainnet: `https://etherscan.io/address/YOUR_ADDRESS`
+  </Step>
+
+  <Step title="Test All Functions">
+    Via Etherscan "Write Contract" tab:
+    1. `startVote()` - Begin election
+    2. `vote(0)` - Cast test vote
+    3. `closeVote()` - End election
+    4. `withdraw()` - Collect fees
+  </Step>
+
+  <Step title="Monitor Transactions">
+    Watch for:
+    - Failed transactions
+    - Gas usage patterns
+    - Contract balance changes
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails on Vercel">
+    Check:
+    - Node.js version (must be 18+)
+    - Root directory is set to `frontend`
+    - Dependencies install correctly
+    - No TypeScript errors
+
+    View build logs in Vercel dashboard for specific errors.
+  </Accordion>
+
+  <Accordion title="Contract deployment fails">
+    Common issues:
+    - Insufficient ETH for gas
+    - Invalid RPC URL
+    - Wrong private key format
+    - Constructor arguments mismatch
+
+    ```bash
+    # Check ETH balance
+    cast balance YOUR_ADDRESS --rpc-url $RPC_URL
+
+    # Estimate gas
+    forge create src/MemberVote.sol:MemberVote \
+      --rpc-url $RPC_URL \
+      --private-key $PRIVATE_KEY \
+      --constructor-args 100000000000000000 \
+      --gas-estimate
+    ```
+  </Accordion>
+
+  <Accordion title="Frontend can't connect to contract">
+    Verify:
+    - Contract address is correct
+    - ABI is up to date
+    - Network configuration matches deployment
+    - RPC endpoint is accessible
+
+    Check browser console for Web3 errors.
+  </Accordion>
+
+  <Accordion title="Transaction failures">
+    Debug with:
+    - Etherscan transaction logs
+    - Revert reasons in error messages
+    - Current workflow station state
+    - User wallet balance and allowances
+  </Accordion>
+</AccordionGroup>
+
+## Security Checklist
+
+Before production deployment:
+
+<Steps>
+  <Step title="Smart Contract Security">
+    - [ ] Professional audit completed
+    - [ ] All tests pass (100% coverage)
+    - [ ] Access controls verified
+    - [ ] No hardcoded private keys
+    - [ ] Reentrancy protection in place
+    - [ ] Integer overflow checks
+  </Step>
+
+  <Step title="Frontend Security">
+    - [ ] No API keys in client code
+    - [ ] Input validation on all forms
+    - [ ] HTTPS enforced
+    - [ ] CSP headers configured
+    - [ ] Dependencies updated
+    - [ ] No console.log in production
+  </Step>
+
+  <Step title="Operational Security">
+    - [ ] Owner key stored securely
+    - [ ] Backup of deployment artifacts
+    - [ ] Monitoring and alerting set up
+    - [ ] Incident response plan documented
+  </Step>
+</Steps>
+
+## Continuous Deployment
+
+Set up automatic deployments:
+
+```yaml title=".github/workflows/deploy.yml"
+name: Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./frontend
+      
+      - name: Run tests
+        run: npm test -- --run
+        working-directory: ./frontend
+      
+      - name: Build
+        run: npm run build
+        working-directory: ./frontend
+      
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./frontend
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="wrench" href="/development/setup">
+    Return to development setup
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Learn about testing strategies
+  </Card>
+</CardGroup>

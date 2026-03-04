@@ -1,80 +1,208 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Cast your first vote on VoteLab in under 5 minutes
 ---
 
-## Get started in three steps
+VoteLab is a decentralized voting application that enables secure, transparent governance on Ethereum. This guide walks you through connecting your wallet and casting your first vote.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, ensure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+- A Web3 wallet (MetaMask, Rainbow, or any WalletConnect-compatible wallet)
+- Sepolia ETH for transaction fees and voting entry fee
+- Access to the deployed VoteLab application
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  VoteLab requires a 0.01 ETH entry fee to cast a vote. This prevents sybil attacks and contributes to the prize pool.
 </Note>
+
+## Connect Your Wallet
+
+<Steps>
+  <Step title="Open VoteLab">
+    Navigate to the VoteLab application in your browser. You'll see a wallet connection prompt.
+  </Step>
+
+  <Step title="Click Connect Wallet">
+    Click the "Connect Wallet" button in the header. This triggers RainbowKit's wallet selection modal.
+
+    <CodeGroup>
+    ```tsx VoteLab Entry Point
+    // src/app/page.tsx
+    export default function Home() {
+      const { isConnected } = useAccount();
+
+      return (
+        <div className="max-w-5xl mx-auto py-12 px-6">
+          {isConnected ? (
+            <DashboardGrid />
+          ) : (
+            <WalletNotConnected />
+          )}
+        </div>
+      );
+    }
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Select Your Wallet">
+    Choose your preferred wallet from the list (MetaMask, Rainbow, WalletConnect, etc.) and approve the connection request.
+  </Step>
+
+  <Step title="Switch to Sepolia Network">
+    If prompted, switch your wallet to the Sepolia testnet. VoteLab is deployed on Sepolia for testing.
+
+    <Warning>
+      Ensure you're connected to the correct network. The contract address is:
+      `0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712`
+    </Warning>
+  </Step>
+</Steps>
+
+## Cast Your First Vote
+
+Once connected, you'll see the voting dashboard with two options and live vote counts.
+
+<Steps>
+  <Step title="Review Voting Options">
+    The dashboard displays two voting cards showing:
+    - Current vote counts
+    - Percentage distribution
+    - Real-time network share
+
+    <CodeGroup>
+    ```tsx Voting Card Component
+    // src/components/VotingCard.tsx
+    export const VotingCard = ({ title, optionId, votes, totalVotes, hasVoted }) => {
+      const { castVote, isPending, workflowStation } = useMemberVote();
+      const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
+      const isVotingOpen = workflowStation === 1;
+      const canVote = isVotingOpen && !hasVoted && !isPending;
+
+      return (
+        <Card>
+          <CardContent>
+            <div className="space-y-1">
+              <span>Live Support</span>
+              <p>{votes}</p>
+            </div>
+            <p>{percentage.toFixed(1)}%</p>
+          </CardContent>
+          <CardFooter>
+            <Button
+              disabled={!canVote}
+              onClick={() => castVote(optionId)}
+            >
+              {hasVoted ? "Vote Recorded" : "Cast Your Vote"}
+            </Button>
+          </CardFooter>
+        </Card>
+      );
+    };
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Choose Your Option">
+    Click "Cast Your Vote" on your preferred option. The button is only enabled when:
+    - Voting is open (workflow station is in "Voting" phase)
+    - You haven't already voted
+    - No transaction is pending
+  </Step>
+
+  <Step title="Approve the Transaction">
+    Your wallet will prompt you to approve the transaction. Review the details:
+    - **Value**: 0.01 ETH (entry fee)
+    - **Gas fee**: Variable based on network conditions
+    - **Total**: Entry fee + gas
+
+    <CodeGroup>
+    ```typescript Vote Transaction
+    // src/hooks/useMemberVote.ts
+    const castVote = (option: number) => {
+      writeContract({
+        address: ContractAddress,
+        abi: ABI,
+        functionName: "vote",
+        args: [BigInt(option)],
+        value: parseEther("0.01"),
+      });
+    };
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Wait for Confirmation">
+    The button will show a loading state with "Processing..." text. Once the transaction is confirmed on-chain:
+    - Vote counts update automatically
+    - Your button changes to "Vote Recorded" with a checkmark
+    - You cannot vote again in this election cycle
+  </Step>
+</Steps>
+
+## Understanding Workflow Stations
+
+VoteLab operates on a three-phase state machine:
+
+<AccordionGroup>
+  <Accordion title="Registering (Phase 0)" icon="clipboard-list">
+    The election is being prepared. Voting is disabled. Only the contract owner can start the voting phase.
+  </Accordion>
+
+  <Accordion title="Voting (Phase 1)" icon="check-to-slot">
+    The polls are open. You can cast your vote by paying the 0.01 ETH entry fee. Each address can vote once per election.
+  </Accordion>
+
+  <Accordion title="Resetting (Phase 2)" icon="rotate">
+    Voting has closed. Results are locked and displayed on the winner dashboard. The owner can sweep funds and start a new election.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  The current workflow station is fetched from the smart contract in real-time using the `getWorkflowStation()` function.
+</Note>
+
+## View Results
+
+After voting closes, the application automatically displays:
+
+- **Winner announcement** with the option that received the most votes
+- **Final vote distribution** as percentages
+- **Total prize pool** accumulated from entry fees
+
+The state is preserved during the "Resetting" phase for frontend visualization before the owner clears it for the next election.
+
+## What's Next?
+
+Now that you've cast your first vote, explore:
+
+<CardGroup cols={2}>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Learn how to run VoteLab locally for development
+  </Card>
+  <Card title="Smart Contract" icon="file-contract" href="https://github.com/Pragyat-Nikunj/Smart-Voting-Contract">
+    Explore the Solidity contract architecture
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Transaction Failed: Invalid Entry Fee">
+    Ensure you're sending exactly 0.01 ETH. The contract will revert if the value is incorrect.
+  </Accordion>
+
+  <Accordion title="Already Voted Error">
+    Each address can only vote once per election cycle. Wait for the owner to reset and start a new election.
+  </Accordion>
+
+  <Accordion title="Wrong Workflow Station">
+    You can only vote during Phase 1 (Voting). Check the current phase in the dashboard header.
+  </Accordion>
+
+  <Accordion title="Insufficient Funds">
+    Ensure your wallet has at least 0.01 ETH plus gas fees. Get Sepolia ETH from a faucet.
+  </Accordion>
+</AccordionGroup>

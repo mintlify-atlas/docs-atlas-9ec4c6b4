@@ -1,0 +1,276 @@
+---
+title: Viewing Results
+description: Learn how to read the VoteLab dashboard and understand vote tallies and election results
+---
+
+The VoteLab dashboard provides real-time visibility into voting progress, results, and election status. This guide explains how to interpret the information displayed.
+
+## Dashboard Overview
+
+The dashboard displays different views based on the current workflow station:
+
+- **Workflow Station 0**: REGISTERING phase (pre-voting)
+- **Workflow Station 1**: VOTING phase (active voting)
+- **Workflow Station 2**: RESETTING phase (post-voting results)
+
+## Workflow Stations
+
+### REGISTERING Phase
+
+When the contract is in workflow station 0, you'll see:
+
+- **Large headline**: "Governance Standby"
+- **Icon**: Animated sparkles icon
+- **Message**: "The contract is in a preparation state. Voting will commence shortly."
+
+<Info>
+This phase indicates that voting hasn't started yet. Wait for the contract owner to initiate the voting session.
+</Info>
+
+### VOTING Phase
+
+During active voting (workflow station 1), the dashboard shows:
+
+#### Proposal Section
+
+- **Label**: "LATEST PROPOSAL" in small caps
+- **Status Badge**: Shows current voting status
+- **Question**: Large, bold proposal text
+- **Example**: "Which fruit provides the best energy for coding sessions?"
+
+#### Your Voting Status
+
+If you've voted, you'll see a green badge:
+
+```jsx
+<div className="inline-flex items-center gap-2 px-3 py-1 rounded-md 
+  bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+  <span className="text-[10px] font-bold uppercase tracking-widest">
+    Recorded On-Chain
+  </span>
+</div>
+```
+
+#### Voting Cards
+
+Two voting cards are displayed side by side, each showing:
+
+**Vote Count ("Live Support")**
+- Large number displaying current votes
+- Updates automatically as votes are cast
+- Retrieved from contract: `optionAVotes` and `optionBVotes`
+
+**Percentage Share**
+- Calculated as: `(votes / totalVotes) * 100`
+- Displayed to one decimal place (e.g., "52.3%")
+- Shows "0.0%" if no votes have been cast yet
+
+**Visual Progress Bar**
+- Animated gradient bar (indigo to purple)
+- Width represents vote percentage
+- Smooth transition animation (1000ms duration)
+- Glowing shadow effect
+
+**Network Share Label**
+- Shows "Locked" status
+- Indicates that votes cannot be changed
+
+<Note>
+The total votes calculation is: `totalVotes = optionAVotes + optionBVotes`
+</Note>
+
+### RESETTING Phase
+
+When voting concludes (workflow station 2), you'll see:
+
+#### Winner Announcement
+
+- **Trophy Icon**: Large golden trophy with glow effect
+- **Session Badge**: Shows the session number
+- **Winner Display**: Large headline showing the winning option
+- **Prize Pool**: Total ETH accumulated from entry fees
+
+```tsx
+<h2 className="text-6xl md:text-8xl font-black tracking-tighter text-white uppercase italic">
+  {optionAVotes === optionBVotes ? "Split Decision" : 
+   optionAVotes > optionBVotes ? election.optionA : election.optionB}
+</h2>
+<p className="text-zinc-400 text-xl font-medium tracking-tight">
+  Community Pool: <span className="text-white">{prizePool} ETH</span>
+</p>
+```
+
+#### Winner Determination Logic
+
+- **Option A wins**: If `optionAVotes > optionBVotes`
+- **Option B wins**: If `optionBVotes > optionAVotes`
+- **Split Decision**: If `optionAVotes === optionBVotes`
+
+## Reading Vote Data
+
+The dashboard uses the `useMemberVote` hook to fetch real-time data:
+
+```typescript
+const { 
+  optionAVotes,    // Number of votes for Option A
+  optionBVotes,    // Number of votes for Option B
+  hasVoted,        // Whether current user has voted
+  workflowStation, // Current phase (0, 1, or 2)
+  prizePool        // Total ETH in contract
+} = useMemberVote();
+```
+
+### Vote Count Retrieval
+
+Votes are fetched from the smart contract:
+
+```typescript
+const { data: optionAVotes, refetch: refetchA } = useReadContract({
+    address: ContractAddress, 
+    abi: ABI, 
+    functionName: "getOptionAVotes",
+});
+
+const { data: optionBVotes, refetch: refetchB } = useReadContract({
+    address: ContractAddress, 
+    abi: ABI, 
+    functionName: "getOptionBVotes",
+});
+```
+
+### Prize Pool Calculation
+
+The prize pool is retrieved from the contract balance:
+
+```typescript
+const { data: balanceData, refetch: refetchBalance } = useBalance({
+    address: ContractAddress,
+});
+
+const prizePool = balanceData ? formatEther(balanceData.value) : "0";
+```
+
+<Info>
+Since each vote costs 0.01 ETH, you can verify the number of total votes by dividing the prize pool by 0.01.
+</Info>
+
+## Real-Time Updates
+
+The dashboard automatically updates when:
+
+1. A new vote is cast (by you or others)
+2. The workflow station changes
+3. A transaction is confirmed
+
+The `useEffect` hook triggers refetches:
+
+```typescript
+useEffect(() => {
+    if (txSuccess) {
+        refetchStatus();
+        refetchElectionId();
+        refetchUserStatus();
+        refetchA();
+        refetchB();
+        refetchBalance();
+    }
+}, [txSuccess, refetchStatus, refetchElectionId, 
+    refetchUserStatus, refetchA, refetchB, refetchBalance]);
+```
+
+## Understanding Vote States
+
+### Before You Vote
+
+- Both voting cards show current tallies
+- "Cast Your Vote" button is active (white background)
+- Progress bars reflect current percentages
+- No "Recorded On-Chain" badge visible
+
+### After You Vote
+
+- Voting cards update with your vote included
+- Your chosen card shows "Vote Recorded" with checkmark
+- Green "Recorded On-Chain" badge appears above cards
+- Both buttons become disabled
+- Progress bars animate to new percentages
+
+### Checking If You Voted
+
+The application tracks your voting status:
+
+```typescript
+const hasVoted = isConnected &&
+    electionId != null &&
+    userVotedId != null
+    ? BigInt(electionId.toString()) === BigInt(userVotedId.toString())
+    : false;
+```
+
+This compares:
+- **electionId**: Current election session ID
+- **userVotedId**: The election ID you voted in
+
+If they match, you've already voted in this session.
+
+## Interpreting the Results
+
+### During Voting
+
+Watch the live tallies to see:
+- Which option is leading
+- Vote distribution percentages
+- Total participation level
+- Prize pool growth
+
+### After Voting Ends
+
+The RESETTING phase displays:
+- Final winner (or split decision)
+- Total prize pool amount
+- Session number
+
+<Warning>
+The results displayed are final and cannot be changed. The contract owner must reset the votes to start a new election.
+</Warning>
+
+## Admin Visibility
+
+If you're the contract owner, you'll also see:
+
+- **Admin Panel**: Control buttons for managing the election
+- Additional contract management options
+- Ability to start/reset voting sessions
+
+<Note>
+The admin panel is only visible if your connected wallet address matches the contract owner address.
+</Note>
+
+## Example Calculations
+
+### Scenario 1: Equal Votes
+
+- Option A: 15 votes
+- Option B: 15 votes
+- Total: 30 votes
+- Prize Pool: 0.3 ETH (30 × 0.01)
+- Percentages: 50.0% each
+- Result: "Split Decision"
+
+### Scenario 2: Clear Winner
+
+- Option A: 42 votes (70.0%)
+- Option B: 18 votes (30.0%)
+- Total: 60 votes
+- Prize Pool: 0.6 ETH (60 × 0.01)
+- Result: Option A wins
+
+## Next Steps
+
+Now that you understand how to read the dashboard:
+
+- Monitor real-time results during active voting
+- Track the prize pool accumulation
+- Wait for election results to be finalized
+- Participate in the next election when voting resets

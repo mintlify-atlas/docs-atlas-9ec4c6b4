@@ -1,0 +1,216 @@
+---
+title: 'Hooks'
+description: 'React hooks for interacting with the VoteLab smart contract'
+---
+
+## useMemberVote
+
+The primary hook for interacting with the VoteLab voting contract. Provides contract state, voting functions, and admin controls.
+
+### Import
+
+```typescript
+import { useMemberVote } from "@/hooks/useMemberVote";
+```
+
+### Return Values
+
+<ResponseField name="address" type="Address | undefined">
+  Connected wallet address from wagmi's `useAccount`
+</ResponseField>
+
+<ResponseField name="isConnected" type="boolean">
+  Whether a wallet is currently connected
+</ResponseField>
+
+<ResponseField name="workflowStation" type="number">
+  Current voting phase: `0` (Registering), `1` (Voting), or `2` (Resetting)
+</ResponseField>
+
+<ResponseField name="optionAVotes" type="number">
+  Total votes for Option A
+</ResponseField>
+
+<ResponseField name="optionBVotes" type="number">
+  Total votes for Option B
+</ResponseField>
+
+<ResponseField name="prizePool" type="string">
+  Contract balance in ETH (formatted using `formatEther`)
+</ResponseField>
+
+<ResponseField name="isOwner" type="boolean">
+  Whether the connected address is the contract owner
+</ResponseField>
+
+<ResponseField name="hasVoted" type="boolean">
+  Whether the connected address has voted in the current election
+</ResponseField>
+
+<ResponseField name="isPending" type="boolean">
+  Whether a transaction is currently pending
+</ResponseField>
+
+<ResponseField name="hash" type="Hash | undefined">
+  Transaction hash of the most recent write operation
+</ResponseField>
+
+<ResponseField name="error" type="Error | null">
+  Error from the most recent write operation
+</ResponseField>
+
+### Methods
+
+<ResponseField name="castVote" type="(option: number) => void">
+  Submit a vote for the specified option (0 or 1). Requires 0.01 ETH payment.
+  
+  **Parameters:**
+  - `option`: Vote choice (0 for Option A, 1 for Option B)
+  
+  **Example:**
+  ```typescript
+  const { castVote, isPending } = useMemberVote();
+  
+  <button onClick={() => castVote(0)} disabled={isPending}>
+    Vote for Option A
+  </button>
+  ```
+</ResponseField>
+
+<ResponseField name="startVote" type="() => void">
+  (Owner only) Transition from Registering phase to Voting phase
+  
+  **Example:**
+  ```typescript
+  const { startVote, isOwner } = useMemberVote();
+  
+  {isOwner && <button onClick={startVote}>Start Voting</button>}
+  ```
+</ResponseField>
+
+<ResponseField name="resetVotes" type="() => void">
+  (Owner only) Close voting and transition to Resetting phase
+  
+  **Example:**
+  ```typescript
+  const { resetVotes, workflowStation } = useMemberVote();
+  
+  {workflowStation === 1 && <button onClick={resetVotes}>Close Polls</button>}
+  ```
+</ResponseField>
+
+<ResponseField name="withdrawFunds" type="() => void">
+  (Owner only) Withdraw contract balance to owner address
+  
+  **Example:**
+  ```typescript
+  const { withdrawFunds, prizePool } = useMemberVote();
+  
+  <button onClick={withdrawFunds}>Withdraw {prizePool} ETH</button>
+  ```
+</ResponseField>
+
+<ResponseField name="refetchAll" type="() => void">
+  Manually refresh all contract data (status, votes, balance, etc.)
+  
+  **Example:**
+  ```typescript
+  const { refetchAll } = useMemberVote();
+  
+  <button onClick={refetchAll}>Refresh Data</button>
+  ```
+</ResponseField>
+
+## Usage Example
+
+```typescript src/components/VotingCard.tsx
+import { useMemberVote } from "@/hooks/useMemberVote";
+
+export const VotingCard = ({ optionId }: { optionId: number }) => {
+  const { 
+    castVote, 
+    isPending, 
+    workflowStation,
+    hasVoted 
+  } = useMemberVote();
+
+  const isVotingOpen = workflowStation === 1;
+  const canVote = isVotingOpen && !hasVoted && !isPending;
+
+  return (
+    <button
+      disabled={!canVote}
+      onClick={() => castVote(optionId)}
+    >
+      {isPending ? "Processing..." : 
+       hasVoted ? "Vote Recorded" : 
+       "Cast Your Vote"}
+    </button>
+  );
+};
+```
+
+## Implementation Details
+
+### Dependencies
+
+The hook uses wagmi hooks internally:
+- `useAccount` - Wallet connection state
+- `useReadContract` - Read contract data
+- `useWriteContract` - Execute contract functions
+- `useWaitForTransactionReceipt` - Track transaction status
+- `useBalance` - Monitor contract balance
+
+### Auto-Refetch Behavior
+
+All contract data automatically refetches when a transaction succeeds:
+
+```typescript
+useEffect(() => {
+  if (txSuccess) {
+    refetchStatus();
+    refetchElectionId();
+    refetchUserStatus();
+    refetchA();
+    refetchB();
+    refetchBalance();
+  }
+}, [txSuccess]);
+```
+
+### Vote Detection Logic
+
+The `hasVoted` flag compares the user's last voted election ID with the current election ID:
+
+```typescript
+const hasVoted = isConnected &&
+  electionId != null &&
+  userVotedId != null
+    ? BigInt(electionId.toString()) === BigInt(userVotedId.toString())
+    : false;
+```
+
+## Type Signatures
+
+```typescript
+interface UseMemberVoteReturn {
+  address: Address | undefined;
+  isConnected: boolean;
+  workflowStation: number;
+  optionAVotes: number;
+  optionBVotes: number;
+  prizePool: string;
+  isOwner: boolean;
+  hasVoted: boolean;
+  castVote: (option: number) => void;
+  startVote: () => void;
+  resetVotes: () => void;
+  withdrawFunds: () => void;
+  isPending: boolean;
+  hash: Hash | undefined;
+  error: Error | null;
+  refetchAll: () => void;
+}
+
+export const useMemberVote: () => UseMemberVoteReturn;
+```

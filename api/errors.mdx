@@ -1,0 +1,541 @@
+---
+title: 'Contract Errors'
+description: 'Custom error types and troubleshooting guide for VoteLab smart contract'
+---
+
+The VoteLab MemberVote contract uses custom errors for gas-efficient and precise error handling. Understanding these errors helps you build robust applications and provide better user feedback.
+
+## Error Reference
+
+### MemberVote__AlreadyVoted
+
+Thrown when an address attempts to vote more than once in the same election.
+
+```solidity
+error MemberVote__AlreadyVoted()
+```
+
+<ResponseField name="Cause" type="string">
+  The connected address has already cast a vote in the current election
+</ResponseField>
+
+<ResponseField name="Solution" type="string">
+  - Check voting status using `addressVoted()` before calling `vote()`
+  - Wait for the owner to reset votes and start a new election
+  - Use a different address to vote
+</ResponseField>
+
+#### Detection Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { data: userVotedId } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'addressVoted',
+  args: [address!],
+});
+
+const { data: electionId } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getElectionId',
+});
+
+const hasVoted = userVotedId != null && electionId != null
+  ? BigInt(userVotedId.toString()) === BigInt(electionId.toString())
+  : false;
+
+if (hasVoted) {
+  // Show "You've already voted" message
+  // Disable voting button
+}
+```
+
+```typescript Error Handling
+import { BaseError, ContractFunctionRevertedError } from 'viem';
+
+try {
+  await walletClient.writeContract({ /* vote */ });
+} catch (err) {
+  if (err instanceof BaseError) {
+    const revertError = err.walk(err => err instanceof ContractFunctionRevertedError);
+    if (revertError instanceof ContractFunctionRevertedError) {
+      const errorName = revertError.data?.errorName;
+      if (errorName === 'MemberVote__AlreadyVoted') {
+        console.error('You have already voted in this election');
+      }
+    }
+  }
+}
+```
+</CodeGroup>
+
+---
+
+### MemberVote__InvalidEntryFee
+
+Thrown when the sent ETH amount doesn't match the required entry fee (0.01 ETH).
+
+```solidity
+error MemberVote__InvalidEntryFee()
+```
+
+<ResponseField name="Cause" type="string">
+  The transaction value is not exactly 0.01 ETH
+</ResponseField>
+
+<ResponseField name="Solution" type="string">
+  - Always send exactly `parseEther('0.01')` with vote transactions
+  - Check wallet balance before voting
+  - Ensure no additional value is being added by your application
+</ResponseField>
+
+#### Prevention Example
+
+<CodeGroup>
+```typescript Correct Usage
+import { parseEther } from 'viem';
+
+const castVote = (option: number) => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'vote',
+    args: [BigInt(option)],
+    value: parseEther('0.01'), // Exactly 0.01 ETH
+  });
+};
+```
+
+```typescript Balance Check
+import { useBalance } from 'wagmi';
+import { parseEther } from 'viem';
+
+const { data: balance } = useBalance({ address });
+
+const hasEnoughBalance = balance && balance.value >= parseEther('0.01');
+
+if (!hasEnoughBalance) {
+  // Show insufficient balance error
+  console.error('Insufficient balance to vote');
+}
+```
+</CodeGroup>
+
+<Warning>
+Sending more than 0.01 ETH will also cause this error. The contract requires an exact match.
+</Warning>
+
+---
+
+### MemberVote__InvalidOption
+
+Thrown when the vote option is neither 0 (Option A) nor 1 (Option B).
+
+```solidity
+error MemberVote__InvalidOption()
+```
+
+<ResponseField name="Cause" type="string">
+  The option parameter is not 0 or 1
+</ResponseField>
+
+<ResponseField name="Solution" type="string">
+  - Ensure option is either `0` for Option A or `1` for Option B
+  - Add input validation before calling the contract
+  - Use TypeScript enums or constants for type safety
+</ResponseField>
+
+#### Prevention Example
+
+<CodeGroup>
+```typescript Type-Safe Options
+enum VoteOption {
+  OptionA = 0,
+  OptionB = 1,
+}
+
+const castVote = (option: VoteOption) => {
+  if (option !== VoteOption.OptionA && option !== VoteOption.OptionB) {
+    throw new Error('Invalid vote option');
+  }
+  
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'vote',
+    args: [BigInt(option)],
+    value: parseEther('0.01'),
+  });
+};
+
+// Usage
+castVote(VoteOption.OptionA); // Valid
+castVote(VoteOption.OptionB); // Valid
+```
+
+```typescript Input Validation
+const validateAndVote = (option: number) => {
+  if (option !== 0 && option !== 1) {
+    console.error('Option must be 0 or 1');
+    return;
+  }
+  
+  castVote(option);
+};
+```
+</CodeGroup>
+
+---
+
+### MemberVote__NotOwner
+
+Thrown when a non-owner address attempts to call owner-only functions.
+
+```solidity
+error MemberVote__NotOwner()
+```
+
+<ResponseField name="Cause" type="string">
+  Caller is not the contract owner
+</ResponseField>
+
+<ResponseField name="Affected Functions" type="array">
+  - `startVote()`
+  - `resetVotes()`
+  - `withdraw()`
+</ResponseField>
+
+<ResponseField name="Solution" type="string">
+  - Check ownership using `getOwner()` before showing admin controls
+  - Only allow the owner address to access admin functions
+  - Provide appropriate UI feedback for non-owner users
+</ResponseField>
+
+#### Access Control Example
+
+<CodeGroup>
+```typescript Ownership Check
+import { useReadContract, useAccount } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { address } = useAccount();
+
+const { data: ownerAddress } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getOwner',
+});
+
+const isOwner = address?.toLowerCase() === (ownerAddress as string)?.toLowerCase();
+
+// Conditionally render admin controls
+if (isOwner) {
+  return (
+    <div>
+      <button onClick={startVote}>Start Vote</button>
+      <button onClick={resetVotes}>Reset Votes</button>
+      <button onClick={withdrawFunds}>Withdraw Funds</button>
+    </div>
+  );
+}
+
+return <div>Owner-only actions are not available</div>;
+```
+
+```typescript UI Component
+interface AdminPanelProps {
+  isOwner: boolean;
+}
+
+const AdminPanel = ({ isOwner }: AdminPanelProps) => {
+  if (!isOwner) {
+    return (
+      <Alert>
+        <AlertTitle>Access Denied</AlertTitle>
+        <AlertDescription>
+          Only the contract owner can perform administrative actions.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  
+  return <AdminControls />;
+};
+```
+</CodeGroup>
+
+---
+
+### MemberVote__WithdrawFailed
+
+Thrown when the ETH transfer during withdrawal fails.
+
+```solidity
+error MemberVote__WithdrawFailed()
+```
+
+<ResponseField name="Cause" type="string">
+  The ETH transfer to the owner failed
+</ResponseField>
+
+<ResponseField name="Possible Reasons" type="array">
+  - Owner address is a contract that rejects ETH
+  - Owner contract's receive/fallback function reverted
+  - Out of gas during transfer
+  - Reentrancy guard triggered
+</ResponseField>
+
+<ResponseField name="Solution" type="string">
+  - Ensure owner address can receive ETH
+  - If owner is a contract, implement proper `receive()` or `fallback()` function
+  - Increase gas limit if needed
+  - Check for reentrancy issues
+</ResponseField>
+
+#### Safe Withdrawal Example
+
+<CodeGroup>
+```typescript Pre-Flight Check
+import { useBalance } from 'wagmi';
+import { formatEther } from 'viem';
+
+const { data: contractBalance } = useBalance({
+  address: ContractAddress,
+});
+
+const { data: ownerBalance } = useBalance({
+  address: ownerAddress,
+});
+
+const withdrawFunds = () => {
+  if (!contractBalance || contractBalance.value === 0n) {
+    console.error('No funds to withdraw');
+    return;
+  }
+  
+  console.log(`Withdrawing ${formatEther(contractBalance.value)} ETH`);
+  
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'withdraw',
+  });
+};
+```
+
+```typescript Error Recovery
+try {
+  await walletClient.writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'withdraw',
+  });
+} catch (err) {
+  if (err instanceof BaseError) {
+    const revertError = err.walk(err => err instanceof ContractFunctionRevertedError);
+    if (revertError instanceof ContractFunctionRevertedError) {
+      const errorName = revertError.data?.errorName;
+      if (errorName === 'MemberVote__WithdrawFailed') {
+        console.error('Withdrawal failed. Check owner address can receive ETH.');
+        // Attempt recovery or notify admin
+      }
+    }
+  }
+}
+```
+</CodeGroup>
+
+---
+
+### MemberVote__WrongWorkflowStation
+
+Thrown when a function is called at an inappropriate workflow stage.
+
+```solidity
+error MemberVote__WrongWorkflowStation()
+```
+
+<ResponseField name="Cause" type="string">
+  Contract is not in the required workflow state for the operation
+</ResponseField>
+
+<ResponseField name="Workflow States" type="object">
+  - `0` (RegisteringVoters): Initial state, voting not started
+  - `1` (VotingStarted): Voting is active
+  - `2` (VotingEnded): Voting has concluded
+</ResponseField>
+
+<ResponseField name="Solution" type="string">
+  - Check current workflow state using `getWorkflowStation()`
+  - Only show vote button when state is `VotingStarted` (1)
+  - Only allow `startVote()` when state is `RegisteringVoters` (0)
+  - Provide clear UI feedback about current voting status
+</ResponseField>
+
+#### State Management Example
+
+<CodeGroup>
+```typescript Workflow Check
+import { useReadContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+enum WorkflowStation {
+  RegisteringVoters = 0,
+  VotingStarted = 1,
+  VotingEnded = 2,
+}
+
+const { data: workflowStation, refetch: refetchStatus } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getWorkflowStation',
+});
+
+const currentStation = workflowStation !== undefined 
+  ? Number(workflowStation) 
+  : WorkflowStation.RegisteringVoters;
+
+// Conditional rendering based on state
+if (currentStation === WorkflowStation.RegisteringVoters) {
+  return <div>Waiting for voting to start...</div>;
+}
+
+if (currentStation === WorkflowStation.VotingStarted) {
+  return <VotingInterface />;
+}
+
+if (currentStation === WorkflowStation.VotingEnded) {
+  return <ResultsDisplay />;
+}
+```
+
+```typescript State-Based Actions
+const getWorkflowMessage = (station: number): string => {
+  switch (station) {
+    case 0:
+      return 'Voting has not started yet';
+    case 1:
+      return 'Voting is now open!';
+    case 2:
+      return 'Voting has ended';
+    default:
+      return 'Unknown state';
+  }
+};
+
+const canVote = currentStation === WorkflowStation.VotingStarted;
+const canStartVote = isOwner && currentStation === WorkflowStation.RegisteringVoters;
+```
+</CodeGroup>
+
+## Error Handling Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Proactive Validation" icon="shield-check">
+    Check contract state before calling functions to prevent errors
+  </Card>
+  <Card title="User Feedback" icon="message">
+    Provide clear, user-friendly error messages based on error types
+  </Card>
+  <Card title="State Monitoring" icon="chart-line">
+    Subscribe to state changes and update UI reactively
+  </Card>
+  <Card title="Graceful Degradation" icon="life-ring">
+    Handle errors gracefully and provide recovery options
+  </Card>
+</CardGroup>
+
+## Complete Error Handling Example
+
+<CodeGroup>
+```typescript Comprehensive Handler
+import { BaseError, ContractFunctionRevertedError } from 'viem';
+import { useWriteContract } from 'wagmi';
+
+const { writeContract, error } = useWriteContract();
+
+const handleVoteError = (error: Error) => {
+  if (error instanceof BaseError) {
+    const revertError = error.walk(
+      err => err instanceof ContractFunctionRevertedError
+    );
+    
+    if (revertError instanceof ContractFunctionRevertedError) {
+      const errorName = revertError.data?.errorName;
+      
+      switch (errorName) {
+        case 'MemberVote__AlreadyVoted':
+          return 'You have already voted in this election';
+        case 'MemberVote__InvalidEntryFee':
+          return 'Please send exactly 0.01 ETH to vote';
+        case 'MemberVote__InvalidOption':
+          return 'Invalid voting option selected';
+        case 'MemberVote__WrongWorkflowStation':
+          return 'Voting is not currently active';
+        case 'MemberVote__NotOwner':
+          return 'Only the contract owner can perform this action';
+        case 'MemberVote__WithdrawFailed':
+          return 'Withdrawal failed. Please contact support';
+        default:
+          return 'Transaction failed. Please try again';
+      }
+    }
+  }
+  
+  return error.message || 'An unknown error occurred';
+};
+
+// Usage
+if (error) {
+  const errorMessage = handleVoteError(error);
+  toast.error(errorMessage);
+}
+```
+
+```typescript React Component
+const VotingButton = ({ option }: { option: number }) => {
+  const { writeContract, isPending, error } = useWriteContract();
+  const { data: workflowStation } = useReadContract({ /* ... */ });
+  const { data: hasVoted } = useReadContract({ /* ... */ });
+  
+  const canVote = workflowStation === 1 && !hasVoted;
+  
+  const handleVote = () => {
+    if (!canVote) return;
+    
+    writeContract({
+      address: ContractAddress,
+      abi: ABI,
+      functionName: 'vote',
+      args: [BigInt(option)],
+      value: parseEther('0.01'),
+    });
+  };
+  
+  return (
+    <div>
+      <button 
+        onClick={handleVote} 
+        disabled={!canVote || isPending}
+      >
+        {isPending ? 'Voting...' : `Vote for Option ${option === 0 ? 'A' : 'B'}`}
+      </button>
+      {error && (
+        <div className="error">
+          {handleVoteError(error)}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+</CodeGroup>
+
+<Tip>
+Always check contract state before calling write functions. This provides better UX and saves users from failed transactions and wasted gas.
+</Tip>

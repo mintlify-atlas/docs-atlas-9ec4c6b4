@@ -1,0 +1,142 @@
+---
+title: 'Admin Overview'
+description: 'Learn about VoteLab admin privileges and how to access the admin panel'
+---
+
+## Understanding Admin Access
+
+VoteLab uses owner-based access control to protect administrative functions. Only the contract owner can manage elections, control workflow states, and withdraw accumulated funds.
+
+### Owner Verification
+
+The system verifies admin access by comparing your connected wallet address with the contract owner address:
+
+```typescript
+// From useMemberVote.ts:104
+isOwner: address?.toLowerCase() === (ownerAddress as string)?.toLowerCase()
+```
+
+This check happens automatically when you connect your wallet. The `getOwner()` contract function returns the authorized admin address:
+
+```typescript
+// Contract ABI function signature
+{
+  "type": "function",
+  "name": "getOwner",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "",
+      "type": "address",
+      "internalType": "address"
+    }
+  ],
+  "stateMutability": "view"
+}
+```
+
+<Warning>
+  Admin functions trigger the `MemberVote__NotOwner` error if called by non-owner addresses. Always verify you're connected with the correct wallet.
+</Warning>
+
+## Admin Panel Interface
+
+When you connect as the contract owner, VoteLab displays an admin console at the bottom of the screen:
+
+```typescript
+// From AdminPanel.tsx:14
+if (!isOwner) return null;
+```
+
+The panel only renders for verified owners, providing a clean interface for non-admin users.
+
+### Panel Features
+
+<Steps>
+  <Step title="Workflow Status Display">
+    Shows the current election phase: REGISTERING (0), VOTING (1), or RESETTING (2)
+  </Step>
+  <Step title="Phase Control Buttons">
+    Context-aware controls that appear based on the current workflow state
+  </Step>
+  <Step title="Prize Pool Monitor">
+    Real-time display of accumulated ETH from voter entry fees
+  </Step>
+  <Step title="Fund Withdrawal">
+    One-click button to collect funds when the prize pool has a balance
+  </Step>
+</Steps>
+
+### Admin Console UI
+
+The admin panel includes:
+
+```tsx
+// From AdminPanel.tsx:18-28
+<div className="flex items-center gap-3 pr-6 border-r border-white/10">
+  <div className="relative">
+    <Settings className={`w-5 h-5 text-indigo-400 ${isPending ? 'animate-spin' : ''}`} />
+    <ShieldCheck className="w-2.5 h-2.5 text-emerald-500 absolute -bottom-0.5 -right-0.5" />
+  </div>
+  <div className="flex flex-col leading-none">
+    <span className="text-[10px] font-black uppercase tracking-widest text-white">Admin Console</span>
+    <span className="text-[8px] font-medium text-zinc-500 uppercase mt-1">Authorized Access Only</span>
+  </div>
+</div>
+```
+
+<Note>
+  The Settings icon animates during pending transactions, providing visual feedback for administrative operations.
+</Note>
+
+## Admin State Management
+
+The admin panel hooks into contract state through the `useMemberVote` custom hook:
+
+```typescript
+// From AdminPanel.tsx:9-12
+const { 
+  workflowStation, prizePool, isOwner, 
+  startVote, resetVotes, withdrawFunds, isPending 
+} = useMemberVote();
+```
+
+### Key Admin Properties
+
+<ParamField path="workflowStation" type="number">
+  Current election phase: 0 (REGISTERING), 1 (VOTING), or 2 (RESETTING)
+</ParamField>
+
+<ParamField path="prizePool" type="string">
+  Total ETH in contract, formatted with `formatEther()` for display
+</ParamField>
+
+<ParamField path="isOwner" type="boolean">
+  Boolean flag indicating if connected address matches contract owner
+</ParamField>
+
+<ParamField path="isPending" type="boolean">
+  Transaction pending status, disables buttons during blockchain operations
+</ParamField>
+
+## Workflow Constants
+
+VoteLab uses numeric constants to represent election phases:
+
+```typescript
+// From AdminPanel.tsx:6
+const WORKFLOW = { REGISTERING: 0, VOTING: 1, RESETTING: 2 };
+```
+
+These map directly to the smart contract's `WorkFlowStation` enum, ensuring UI state matches on-chain state.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Managing Elections" icon="ballot-check" href="/admin/managing-elections">
+    Learn how to start voting sessions and close polls
+  </Card>
+  <Card title="Fund Management" icon="wallet" href="/admin/fund-management">
+    Understand prize pool mechanics and fund withdrawal
+  </Card>
+</CardGroup>

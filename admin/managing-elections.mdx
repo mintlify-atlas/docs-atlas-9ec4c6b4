@@ -1,0 +1,266 @@
+---
+title: 'Managing Elections'
+description: 'Control election lifecycle with startVote() and resetVotes() functions'
+---
+
+## Election Lifecycle
+
+VoteLab elections progress through three workflow states. As an admin, you control transitions between these states using two primary functions.
+
+### Workflow States
+
+```typescript
+// From AdminPanel.tsx:6
+const WORKFLOW = { REGISTERING: 0, VOTING: 1, RESETTING: 2 };
+```
+
+<Steps>
+  <Step title="REGISTERING (0)">
+    Initial state where the system is ready to begin a new election
+  </Step>
+  <Step title="VOTING (1)">
+    Active state where voters can cast their votes with entry fees
+  </Step>
+  <Step title="RESETTING (2)">
+    Post-election state after tallying, before starting the next round
+  </Step>
+</Steps>
+
+## Opening Polls with startVote()
+
+Use `startVote()` to transition from REGISTERING or RESETTING states into active voting.
+
+### Function Implementation
+
+```typescript
+// From useMemberVote.ts:46-52
+const startVote = () => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: "startVote",
+  });
+};
+```
+
+### Contract Function Signature
+
+```json
+{
+  "type": "function",
+  "name": "startVote",
+  "inputs": [],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+}
+```
+
+### UI Button Logic
+
+The "Open Polls" button appears conditionally based on workflow state:
+
+```tsx
+// From AdminPanel.tsx:31-40
+{(workflowStation === WORKFLOW.REGISTERING || workflowStation === WORKFLOW.RESETTING) && (
+  <button 
+    onClick={startVote}
+    disabled={isPending}
+    className="group flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+  >
+    {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+    Open Polls
+  </button>
+)}
+```
+
+<Note>
+  The button only renders when `workflowStation` equals 0 (REGISTERING) or 2 (RESETTING), ensuring you can't start an already active election.
+</Note>
+
+### State Transition Flow
+
+<Steps>
+  <Step title="Verify Current State">
+    Confirm the workflow is in REGISTERING (0) or RESETTING (2) state
+  </Step>
+  <Step title="Click Open Polls">
+    Execute the `startVote()` transaction on the blockchain
+  </Step>
+  <Step title="Transaction Confirmation">
+    Wait for the transaction to be mined (button shows spinner during `isPending`)
+  </Step>
+  <Step title="State Refresh">
+    Contract state automatically refetches, updating `workflowStation` to VOTING (1)
+  </Step>
+  <Step title="UI Update">
+    Admin panel hides "Open Polls" and displays "Close & Tally" button
+  </Step>
+</Steps>
+
+<Warning>
+  Attempting to call `startVote()` during VOTING state triggers the `MemberVote__WrongWorkflowStation` error. The UI prevents this by hiding the button.
+</Warning>
+
+## Closing Polls with resetVotes()
+
+Use `resetVotes()` to end the active voting session and tally results.
+
+### Function Implementation
+
+```typescript
+// From useMemberVote.ts:54-60
+const resetVotes = () => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: "resetVotes",
+  });
+};
+```
+
+### Contract Function Signature
+
+```json
+{
+  "type": "function",
+  "name": "resetVotes",
+  "inputs": [],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+}
+```
+
+### UI Button Logic
+
+The "Close & Tally" button appears only during active voting:
+
+```tsx
+// From AdminPanel.tsx:42-51
+{workflowStation === WORKFLOW.VOTING && (
+  <button 
+    onClick={resetVotes}
+    disabled={isPending}
+    className="group flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-black rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+  >
+    {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Square className="w-3.5 h-3.5 fill-current" />}
+    Close & Tally
+  </button>
+)}
+```
+
+<Note>
+  The button exclusively renders when `workflowStation` equals 1 (VOTING), preventing accidental resets during non-voting states.
+</Note>
+
+### State Transition Flow
+
+<Steps>
+  <Step title="Verify Voting Active">
+    Confirm the workflow is in VOTING (1) state with active participants
+  </Step>
+  <Step title="Click Close & Tally">
+    Execute the `resetVotes()` transaction to finalize results
+  </Step>
+  <Step title="Transaction Mining">
+    Wait for blockchain confirmation (spinner indicates `isPending` status)
+  </Step>
+  <Step title="Vote Tallying">
+    Contract calculates final vote counts and determines winner
+  </Step>
+  <Step title="State Transition">
+    Workflow moves to RESETTING (2), incrementing the election ID
+  </Step>
+  <Step title="UI Refresh">
+    Admin panel displays "Open Polls" button for the next election cycle
+  </Step>
+</Steps>
+
+## Automatic State Refetching
+
+After successful transactions, VoteLab automatically refreshes all contract state:
+
+```typescript
+// From useMemberVote.ts:80-89
+useEffect(() => {
+  if (txSuccess) {
+    refetchStatus();
+    refetchElectionId();
+    refetchUserStatus();
+    refetchA();
+    refetchB();
+    refetchBalance();
+  }
+}, [txSuccess, refetchStatus, refetchElectionId, refetchUserStatus, refetchA, refetchB, refetchBalance]);
+```
+
+This ensures the admin panel always displays current election data without manual refreshing.
+
+## Transaction Pending State
+
+During blockchain operations, the UI prevents multiple transactions:
+
+```typescript
+// From useMemberVote.ts:10
+const { writeContract, data: hash, isPending, error } = useWriteContract();
+```
+
+All admin buttons disable when `isPending` is true:
+
+```tsx
+// Button pattern from AdminPanel.tsx
+<button 
+  onClick={startVote}
+  disabled={isPending}
+  // ... className with disabled:opacity-50
+>
+  {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play />}
+```
+
+<Warning>
+  Never attempt to bypass the pending state checks. Multiple simultaneous transactions can cause nonce conflicts and failed operations.
+</Warning>
+
+## Election ID Tracking
+
+Each time you call `resetVotes()`, the contract increments the election ID:
+
+```typescript
+// From useMemberVote.ts:22-24
+const { data: electionId, refetch: refetchElectionId } = useReadContract({
+  address: ContractAddress, abi: ABI, functionName: "getElectionId",
+});
+```
+
+This ID tracks voter participation and prevents double-voting across election cycles:
+
+```typescript
+// From useMemberVote.ts:91-95
+const hasVoted = isConnected &&
+  electionId != null &&
+  userVotedId != null
+  ? BigInt(electionId.toString()) === BigInt(userVotedId.toString())
+  : false;
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Timing" icon="clock">
+    Allow sufficient voting time before calling `resetVotes()` to ensure voter participation
+  </Card>
+  <Card title="Communication" icon="megaphone">
+    Announce voting sessions in advance so members know when polls open
+  </Card>
+  <Card title="Monitoring" icon="chart-line">
+    Watch vote counts during active sessions to gauge participation levels
+  </Card>
+  <Card title="Gas Management" icon="gas-pump">
+    Ensure your admin wallet has sufficient ETH for transaction gas fees
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Fund Management" icon="wallet" href="/admin/fund-management">
+  Learn how to withdraw accumulated entry fees from the prize pool
+</Card>

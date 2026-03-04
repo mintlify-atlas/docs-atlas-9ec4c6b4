@@ -1,0 +1,552 @@
+---
+title: Security Model
+description: Learn how VoteLab protects against unauthorized access, sybil attacks, and fund theft
+---
+
+VoteLab implements a multi-layered security model that combines smart contract access control, economic deterrents, and frontend validation. Understanding these mechanisms is critical for building secure voting applications.
+
+## Access Control: The onlyOwner Pattern
+
+### Overview
+
+VoteLab uses the **onlyOwner** pattern to restrict administrative functions to the contract deployer. This prevents unauthorized users from manipulating election state or withdrawing funds.
+
+<Warning>
+  The owner address is set once during contract deployment and cannot be changed. Choose your deployment account carefully.
+</Warning>
+
+### Owner Verification
+
+The contract stores the owner address as an immutable variable set in the constructor:
+
+```solidity
+address private immutable i_owner;
+
+constructor(uint256 entryFee) {
+    i_owner = msg.sender;
+    i_entryFee = entryFee;
+}
+```
+
+You can query the owner address using the `getOwner()` function:
+
+```typescript
+// From ABI (src/constants/index.ts:74-85)
+{
+  "type": "function",
+  "name": "getOwner",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "",
+      "type": "address",
+      "internalType": "address"
+    }
+  ],
+  "stateMutability": "view"
+}
+```
+
+### Protected Functions
+
+Three critical functions are protected by the onlyOwner modifier:
+
+<Tabs>
+  <Tab title="startVote()">
+    **Purpose**: Initiate a new election cycle
+    
+    **Security Risk**: If unrestricted, any user could reset vote counts and start new elections arbitrarily.
+    
+    ```typescript
+    // src/hooks/useMemberVote.ts:46-52
+    const startVote = () => {
+        writeContract({
+            address: ContractAddress,
+            abi: ABI,
+            functionName: "startVote",
+        });
+    };
+    ```
+    
+    **Revert Condition**: If `msg.sender != i_owner`, reverts with `MemberVote__NotOwner`
+  </Tab>
+  <Tab title="resetVotes()">
+    **Purpose**: Close active election and lock results
+    
+    **Security Risk**: If unrestricted, any user could prematurely close elections or prevent voting.
+    
+    ```typescript
+    // src/hooks/useMemberVote.ts:54-60
+    const resetVotes = () => {
+        writeContract({
+            address: ContractAddress,
+            abi: ABI,
+            functionName: "resetVotes",
+        });
+    };
+    ```
+    
+    **Revert Condition**: If `msg.sender != i_owner`, reverts with `MemberVote__NotOwner`
+  </Tab>
+  <Tab title="withdraw()">
+    **Purpose**: Transfer accumulated entry fees to owner
+    
+    **Security Risk**: If unrestricted, any user could drain the contract balance.
+    
+    ```typescript
+    // src/hooks/useMemberVote.ts:62-68
+    const withdrawFunds = () => {
+        writeContract({
+            address: ContractAddress,
+            abi: ABI,
+            functionName: "withdraw",
+        });
+    };
+    ```
+    
+    **Revert Condition**: If `msg.sender != i_owner`, reverts with `MemberVote__NotOwner`
+    
+    **Additional Failure**: If the ETH transfer fails, reverts with `MemberVote__WithdrawFailed`
+  </Tab>
+</Tabs>
+
+### Frontend Access Control
+
+The `useMemberVote` hook provides a computed `isOwner` flag that components use to conditionally render admin UI:
+
+```typescript
+// src/hooks/useMemberVote.ts:26-28
+const { data: ownerAddress } = useReadContract({
+    address: ContractAddress, abi: ABI, functionName: "getOwner",
+});
+
+// src/hooks/useMemberVote.ts:104
+isOwner: address?.toLowerCase() === (ownerAddress as string)?.toLowerCase(),
+```
+
+<Note>
+  The comparison uses lowercase normalization to handle EIP-55 checksum addresses correctly.
+</Note>
+
+The AdminPanel component uses this flag for access control:
+
+```typescript
+// src/components/AdminPanel.tsx:8-14
+export const AdminPanel = () => {
+  const { 
+    workflowStation, prizePool, isOwner, 
+    startVote, resetVotes, withdrawFunds, isPending 
+  } = useMemberVote();
+
+  if (!isOwner) return null;
+```
+
+<Warning>
+  Frontend checks are for UX only. Never rely on client-side validation for security. The smart contract enforces the true access control.
+</Warning>
+
+## Entry Fee Mechanism
+
+### Economic Deterrent
+
+VoteLab requires users to pay an entry fee to vote. This creates an economic barrier that prevents sybil attacks (mass account creation to manipulate votes).
+
+```typescript
+// src/hooks/useMemberVote.ts:70-78
+const castVote = (option: number) => {
+    writeContract({
+        address: ContractAddress,
+        abi: ABI,
+        functionName: "vote",
+        args: [BigInt(option)],
+        value: parseEther("0.01"),  // Entry fee required
+    });
+};
+```
+
+### Fee Validation
+
+The contract enforces exact fee payment. From the ABI, we see the error definition:
+
+```typescript
+// src/constants/index.ts:152-155
+{
+  "type": "error",
+  "name": "MemberVote__InvalidEntryFee",
+  "inputs": []
+}
+```
+
+**Revert Conditions**:
+- Sending less than `i_entryFee` (underpayment)
+- Sending more than `i_entryFee` (overpayment)
+
+<Accordion title="Why reject overpayment?">
+  Rejecting overpayment prevents user mistakes and ensures transparent, predictable costs. If the contract accepted excess ETH, users might accidentally send too much and lose funds.
+</Accordion>
+
+### Immutable Fee Structure
+
+The entry fee is set during contract deployment and cannot be changed:
+
+```solidity
+uint256 private immutable i_entryFee;
+
+constructor(uint256 entryFee) {
+    i_owner = msg.sender;
+    i_entryFee = entryFee;  // Set once, never changes
+}
+```
+
+<Note>
+  The current deployment uses **0.01 ETH** as the entry fee. This value is hardcoded in the frontend but originates from the contract's constructor parameter.
+</Note>
+
+### Prize Pool Tracking
+
+The contract balance represents the accumulated entry fees. Users can view the prize pool using the frontend:
+
+```typescript
+// src/hooks/useMemberVote.ts:14-16
+const { data: balanceData, refetch: refetchBalance } = useBalance({
+    address: ContractAddress,
+});
+
+// src/hooks/useMemberVote.ts:103
+prizePool: balanceData ? formatEther(balanceData.value) : "0",
+```
+
+The AdminPanel displays this value when non-zero:
+
+```typescript
+// src/components/AdminPanel.tsx:53-62
+{parseFloat(prizePool) > 0 && (
+  <button 
+    onClick={withdrawFunds}
+    disabled={isPending}
+    className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500 text-yellow-500 hover:text-black rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border border-yellow-500/20"
+  >
+    <Wallet className="w-3.5 h-3.5" />
+    Collect {prizePool} ETH
+  </button>
+)}
+```
+
+## Sybil Attack Prevention
+
+### The Threat
+
+A **sybil attack** occurs when a malicious actor creates multiple addresses to cast multiple votes, overwhelming legitimate voters. Without protection, an attacker could:
+
+1. Generate thousands of Ethereum addresses
+2. Vote with each address to manipulate results
+3. Dominate the election with minimal effort
+
+### Defense Mechanisms
+
+VoteLab implements two layers of sybil protection:
+
+<Steps>
+  <Step title="Entry Fee Requirement">
+    Each vote costs 0.01 ETH. To cast 100 fraudulent votes, an attacker must spend 1 ETH (plus gas fees). This creates a significant economic barrier.
+    
+    **Cost Analysis**:
+    - 1 vote: 0.01 ETH (~$30 at current prices)
+    - 100 votes: 1 ETH (~$3,000)
+    - 1,000 votes: 10 ETH (~$30,000)
+    
+    <Note>
+      The entry fee makes large-scale manipulation economically unfeasible for most attackers.
+    </Note>
+  </Step>
+  <Step title="One Vote Per Address">
+    The contract maintains a mapping that tracks each address's vote:
+    
+    ```solidity
+    mapping(address => uint256) addressVoted;
+    ```
+    
+    When you vote, the contract stores your current election ID:
+    
+    ```solidity
+    addressVoted[msg.sender] = electionId;
+    ```
+    
+    Attempting to vote again in the same election reverts with `MemberVote__AlreadyVoted`:
+    
+    ```typescript
+    // From ABI (src/constants/index.ts:147-150)
+    {
+      "type": "error",
+      "name": "MemberVote__AlreadyVoted",
+      "inputs": []
+    }
+    ```
+  </Step>
+</Steps>
+
+### Frontend Double-Vote Prevention
+
+The `useMemberVote` hook computes a `hasVoted` flag to prevent double-voting attempts at the UI level:
+
+```typescript
+// src/hooks/useMemberVote.ts:91-95
+const hasVoted = isConnected &&
+    electionId != null &&
+    userVotedId != null
+    ? BigInt(electionId.toString()) === BigInt(userVotedId.toString())
+    : false;
+```
+
+**Logic Breakdown**:
+1. Fetch current `electionId` from contract
+2. Fetch `userVotedId` for connected address using `addressVoted(address)`
+3. Compare the two values
+4. If they match, the user voted in the current election
+
+<Warning>
+  This is a UX optimization only. The contract enforces the true double-vote prevention.
+</Warning>
+
+### Attack Scenario Analysis
+
+<Accordion title="Scenario 1: Wealthy Attacker">
+  **Attack**: A wealthy actor creates 1,000 addresses and votes with each one.
+  
+  **Cost**: 10 ETH + gas fees ≈ $30,000
+  
+  **Defense**: The economic barrier makes this attack expensive. For organizational governance, the value of manipulating a vote must exceed $30,000 to be profitable.
+  
+  **Additional Mitigation**: You can increase the entry fee for high-stakes elections to further deter wealthy attackers.
+</Accordion>
+
+<Accordion title="Scenario 2: Botnet Attack">
+  **Attack**: An attacker uses a botnet to generate thousands of voting transactions.
+  
+  **Defense**: Each transaction requires 0.01 ETH. The attacker must fund each address before voting, creating the same economic barrier as Scenario 1.
+  
+  **Additional Mitigation**: Monitor the voters array for suspicious patterns (e.g., sequential address creation).
+</Accordion>
+
+<Accordion title="Scenario 3: Re-entrancy Attack">
+  **Attack**: An attacker tries to re-enter the `vote()` function to vote multiple times in a single transaction.
+  
+  **Defense**: The contract uses the Checks-Effects-Interactions pattern and updates state before any external calls. Even if re-entrancy were possible, the `addressVoted` mapping would prevent duplicate votes.
+</Accordion>
+
+## Data Integrity
+
+### Vote Count Preservation
+
+VoteLab preserves vote counts during the Resetting phase to maintain data integrity. From the README:
+
+> **Data Persistence**: Preserves results in the `Resetting` phase for frontend visualization before clearing state.
+
+This design prevents the owner from manipulating results after voting closes:
+
+1. Voting closes (transition to Resetting)
+2. Vote counts are locked
+3. Frontend displays final results
+4. Owner can withdraw funds but cannot modify counts
+5. Owner starts new election (counts are cleared)
+
+<Note>
+  Vote counts are only reset when the owner calls `startVote()`, never during `resetVotes()`.
+</Note>
+
+### Voter Registry
+
+The contract maintains a dynamic array of all voters:
+
+```typescript
+// From ABI (src/constants/index.ts:86-98)
+{
+  "type": "function",
+  "name": "getVoters",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "",
+      "type": "address[]",
+      "internalType": "address[]"
+    }
+  ],
+  "stateMutability": "view"
+}
+```
+
+This array allows:
+- **Audit trails**: Verify which addresses participated
+- **Fraud detection**: Identify suspicious voting patterns
+- **Participation metrics**: Calculate turnout percentages
+
+<Warning>
+  The voters array is cleared when `startVote()` is called. Export voter data before starting a new election if you need historical records.
+</Warning>
+
+## Contract Error Types
+
+VoteLab uses custom errors for gas-efficient, specific revert messages:
+
+<CardGroup cols={2}>
+  <Card title="MemberVote__NotOwner" icon="ban">
+    **Trigger**: Non-owner calls `startVote()`, `resetVotes()`, or `withdraw()`
+    
+    **Prevention**: Check `isOwner` flag before calling admin functions
+  </Card>
+  <Card title="MemberVote__AlreadyVoted" icon="check-double">
+    **Trigger**: Address attempts to vote twice in the same election
+    
+    **Prevention**: Check `hasVoted` flag before calling `castVote()`
+  </Card>
+  <Card title="MemberVote__InvalidEntryFee" icon="coins">
+    **Trigger**: Vote transaction sends incorrect ETH amount
+    
+    **Prevention**: Always send exactly 0.01 ETH with `vote()` calls
+  </Card>
+  <Card title="MemberVote__InvalidOption" icon="xmark">
+    **Trigger**: Vote option is not 0 or 1
+    
+    **Prevention**: Validate option parameter before calling `vote()`
+  </Card>
+  <Card title="MemberVote__WrongWorkflowStation" icon="diagram-project">
+    **Trigger**: Function called in invalid workflow state
+    
+    **Prevention**: Check `workflowStation` before state-changing calls
+  </Card>
+  <Card title="MemberVote__WithdrawFailed" icon="circle-exclamation">
+    **Trigger**: ETH transfer to owner fails in `withdraw()`
+    
+    **Prevention**: Ensure owner address can receive ETH (not a rejected contract)
+  </Card>
+</CardGroup>
+
+## Best Practices for Secure Integration
+
+<Steps>
+  <Step title="Never bypass contract validation">
+    Always let the contract enforce security rules. Frontend checks are for UX only:
+    
+    ```typescript
+    // Good: Provide feedback before transaction
+    if (hasVoted) {
+      alert("You've already voted");
+      return;
+    }
+    castVote(option);
+    
+    // Bad: Assume frontend check is sufficient
+    // (Contract still enforces, but poor UX if tx reverts)
+    ```
+  </Step>
+  <Step title="Handle all error types">
+    Parse the error object from the hook to provide meaningful feedback:
+    
+    ```typescript
+    const { error } = useMemberVote();
+    
+    useEffect(() => {
+      if (error) {
+        if (error.message.includes("AlreadyVoted")) {
+          toast.error("You've already voted in this election");
+        } else if (error.message.includes("InvalidEntryFee")) {
+          toast.error("Incorrect ETH amount sent");
+        }
+        // ... handle other errors
+      }
+    }, [error]);
+    ```
+  </Step>
+  <Step title="Verify owner identity">
+    If building a custom admin interface, always verify the owner address:
+    
+    ```typescript
+    const { isOwner, address } = useMemberVote();
+    
+    if (!isOwner) {
+      throw new Error(`Address ${address} is not authorized`);
+    }
+    ```
+  </Step>
+  <Step title="Monitor for suspicious activity">
+    Implement off-chain monitoring for unusual patterns:
+    
+    - Multiple votes from sequentially generated addresses
+    - Large numbers of votes in short time periods
+    - Votes from addresses with no prior transaction history
+  </Step>
+  <Step title="Consider additional security layers">
+    For high-stakes elections, consider:
+    
+    - **KYC integration**: Verify voter identity off-chain
+    - **Multi-sig owner**: Use a multi-signature wallet as the owner
+    - **Time locks**: Add minimum voting periods to prevent flash attacks
+    - **Higher entry fees**: Increase economic barrier for critical votes
+  </Step>
+</Steps>
+
+## Testing Security Properties
+
+VoteLab's README highlights security test coverage:
+
+> **Security**: Proves that non-owners cannot call `withdraw()` or `startVote()`.
+
+Run security tests using Foundry:
+
+```bash
+cd contracts
+forge test --match-contract SecurityTest
+```
+
+For frontend security tests:
+
+```bash
+npm test -- --grep "AdminPanel"
+```
+
+From the README:
+
+> **Security**: Verifies that the `AdminPanel` is physically absent from the DOM for unauthorized wallets.
+
+## Security Audit Checklist
+
+Before deploying to mainnet, verify:
+
+<Accordion title="Access Control">
+  - [ ] Owner address is a secure wallet (hardware wallet or multi-sig)
+  - [ ] All admin functions revert for non-owners
+  - [ ] Frontend hides admin UI for non-owners
+  - [ ] Owner address is correctly set in constructor
+</Accordion>
+
+<Accordion title="Entry Fee Mechanism">
+  - [ ] Entry fee is set to appropriate value for use case
+  - [ ] Contract rejects underpayment and overpayment
+  - [ ] Entry fee is immutable after deployment
+  - [ ] Prize pool tracking is accurate
+</Accordion>
+
+<Accordion title="Sybil Protection">
+  - [ ] Double-voting reverts with correct error
+  - [ ] Address mapping persists across transactions
+  - [ ] Election ID increments correctly
+  - [ ] Frontend displays hasVoted status accurately
+</Accordion>
+
+<Accordion title="Data Integrity">
+  - [ ] Vote counts preserved in Resetting state
+  - [ ] Voter array persists until next election
+  - [ ] State transitions follow FSM rules
+  - [ ] No owner can manipulate counts after voting closes
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="sitemap" href="/concepts/architecture">
+    Review the full system architecture and component integration
+  </Card>
+  <Card title="Workflow States" icon="diagram-project" href="/concepts/workflow-states">
+    Master the three-stage state machine governing elections
+  </Card>
+</CardGroup>

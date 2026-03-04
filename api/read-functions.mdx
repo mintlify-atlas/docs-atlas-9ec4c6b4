@@ -1,0 +1,339 @@
+---
+title: 'Read Functions'
+description: 'View functions to query the VoteLab smart contract state'
+---
+
+Read functions are view-only operations that don't modify contract state and don't require gas fees.
+
+## getWorkflowStation
+
+Returns the current workflow state of the voting contract.
+
+```solidity
+function getWorkflowStation() external view returns (uint8)
+```
+
+### Returns
+
+<ResponseField name="workflowStation" type="uint8">
+  The current workflow state as an enum value:
+  - `0`: RegisteringVoters
+  - `1`: VotingStarted
+  - `2`: VotingEnded
+</ResponseField>
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { data: workflowStation, refetch: refetchStatus } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getWorkflowStation',
+});
+
+// workflowStation will be 0, 1, or 2
+const status = workflowStation !== undefined ? Number(workflowStation) : 0;
+```
+
+```typescript Viem
+import { publicClient } from './client';
+
+const workflowStation = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'getWorkflowStation',
+});
+```
+</CodeGroup>
+
+---
+
+## getOptionAVotes
+
+Returns the total number of votes for Option A.
+
+```solidity
+function getOptionAVotes() external view returns (uint256)
+```
+
+### Returns
+
+<ResponseField name="votes" type="uint256">
+  The total number of votes cast for Option A
+</ResponseField>
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { data: optionAVotes, refetch: refetchA } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getOptionAVotes',
+});
+
+const votesA = optionAVotes ? Number(optionAVotes) : 0;
+```
+
+```typescript Viem
+const optionAVotes = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'getOptionAVotes',
+});
+```
+</CodeGroup>
+
+---
+
+## getOptionBVotes
+
+Returns the total number of votes for Option B.
+
+```solidity
+function getOptionBVotes() external view returns (uint256)
+```
+
+### Returns
+
+<ResponseField name="votes" type="uint256">
+  The total number of votes cast for Option B
+</ResponseField>
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { data: optionBVotes, refetch: refetchB } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getOptionBVotes',
+});
+
+const votesB = optionBVotes ? Number(optionBVotes) : 0;
+```
+
+```typescript Viem
+const optionBVotes = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'getOptionBVotes',
+});
+```
+</CodeGroup>
+
+---
+
+## getOwner
+
+Returns the contract owner's address.
+
+```solidity
+function getOwner() external view returns (address)
+```
+
+### Returns
+
+<ResponseField name="owner" type="address">
+  The Ethereum address of the contract owner
+</ResponseField>
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract, useAccount } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { address } = useAccount();
+
+const { data: ownerAddress } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getOwner',
+});
+
+// Check if current user is owner
+const isOwner = address?.toLowerCase() === (ownerAddress as string)?.toLowerCase();
+```
+
+```typescript Viem
+const ownerAddress = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'getOwner',
+});
+```
+</CodeGroup>
+
+---
+
+## getElectionId
+
+Returns the current election ID, which increments with each new voting session.
+
+```solidity
+function getElectionId() external view returns (uint256)
+```
+
+### Returns
+
+<ResponseField name="electionId" type="uint256">
+  The current election identifier
+</ResponseField>
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { data: electionId, refetch: refetchElectionId } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getElectionId',
+});
+```
+
+```typescript Viem
+const electionId = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'getElectionId',
+});
+```
+</CodeGroup>
+
+<Info>
+The election ID is useful for tracking which election a user voted in, preventing double voting across the same election.
+</Info>
+
+---
+
+## getVoters
+
+Returns an array of all addresses that have voted in the current election.
+
+```solidity
+function getVoters() external view returns (address[])
+```
+
+### Returns
+
+<ResponseField name="voters" type="address[]">
+  An array of Ethereum addresses that have cast votes
+</ResponseField>
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { data: voters } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getVoters',
+});
+
+// voters is an array of addresses
+const voterCount = voters?.length ?? 0;
+```
+
+```typescript Viem
+const voters = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'getVoters',
+});
+
+console.log(`Total voters: ${voters.length}`);
+```
+</CodeGroup>
+
+---
+
+## addressVoted
+
+Checks which election ID a specific address voted in (0 if they haven't voted).
+
+```solidity
+function addressVoted(address voter) external view returns (uint256)
+```
+
+### Parameters
+
+<ParamField path="voter" type="address" required>
+  The Ethereum address to check voting status for
+</ParamField>
+
+### Returns
+
+<ResponseField name="electionId" type="uint256">
+  The election ID this address voted in (returns 0 if they haven't voted)
+</ResponseField>
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useReadContract, useAccount } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { address, isConnected } = useAccount();
+
+const { data: userVotedId, refetch: refetchUserStatus } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'addressVoted',
+  args: [address!],
+  query: { enabled: !!address }
+});
+
+// Check if user has voted in current election
+const { data: electionId } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getElectionId',
+});
+
+const hasVoted = isConnected && 
+  electionId != null && 
+  userVotedId != null
+  ? BigInt(electionId.toString()) === BigInt(userVotedId.toString())
+  : false;
+```
+
+```typescript Viem
+const userAddress = '0x...';
+
+const votedElectionId = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'addressVoted',
+  args: [userAddress],
+});
+
+if (votedElectionId === 0n) {
+  console.log('User has not voted');
+} else {
+  console.log(`User voted in election ${votedElectionId}`);
+}
+```
+</CodeGroup>
+
+<Warning>
+This function returns the election ID the user voted in, not a boolean. Compare it with the current election ID to determine if they voted in the active election.
+</Warning>

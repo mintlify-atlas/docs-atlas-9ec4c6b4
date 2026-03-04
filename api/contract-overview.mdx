@@ -1,0 +1,109 @@
+---
+title: 'Contract Overview'
+description: 'VoteLab smart contract deployment details and ABI structure'
+---
+
+## Contract Details
+
+The VoteLab MemberVote contract is deployed on the Ethereum blockchain and provides a decentralized voting system with entry fees and prize pool mechanics.
+
+<ParamField path="address" type="address">
+  **Contract Address**: `0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712`
+</ParamField>
+
+<ParamField path="network" type="string">
+  **Network**: Ethereum (check deployment configuration for specific network)
+</ParamField>
+
+## Contract Architecture
+
+The MemberVote contract implements a voting workflow with the following states:
+
+- **RegisteringVoters** (0): Initial state, voters can register
+- **VotingStarted** (1): Voting is active, users can cast votes
+- **VotingEnded** (2): Voting has concluded
+
+## Key Features
+
+### Entry Fee System
+Voters must pay an entry fee (0.01 ETH) to participate in voting, which contributes to the prize pool.
+
+### Workflow Management
+The contract owner can control the voting lifecycle through `startVote()` and `resetVotes()` functions.
+
+### Vote Tracking
+The contract tracks individual votes and prevents double voting through the `addressVoted` mapping.
+
+### Prize Pool
+Accumulated entry fees form a prize pool that can be withdrawn by the contract owner.
+
+## Contract ABI
+
+The contract ABI includes:
+
+<CardGroup cols={3}>
+  <Card title="Read Functions" icon="eye" href="/api/read-functions">
+    7 view functions for querying contract state
+  </Card>
+  <Card title="Write Functions" icon="pen" href="/api/write-functions">
+    4 state-changing functions for voting and management
+  </Card>
+  <Card title="Custom Errors" icon="triangle-exclamation" href="/api/errors">
+    6 custom error types for precise error handling
+  </Card>
+</CardGroup>
+
+## Usage Example
+
+<CodeGroup>
+```typescript Wagmi v2
+import { useReadContract, useWriteContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { data: workflowStation } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: 'getWorkflowStation',
+});
+
+const { writeContract } = useWriteContract();
+
+const castVote = (option: number) => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'vote',
+    args: [BigInt(option)],
+    value: parseEther('0.01'),
+  });
+};
+```
+
+```typescript Viem
+import { createPublicClient, createWalletClient, http } from 'viem';
+import { mainnet } from 'viem/chains';
+
+const publicClient = createPublicClient({
+  chain: mainnet,
+  transport: http(),
+});
+
+const workflowStation = await publicClient.readContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'getWorkflowStation',
+});
+```
+</CodeGroup>
+
+## Constructor
+
+The contract is initialized with an entry fee parameter:
+
+<ParamField path="entryFee" type="uint256" required>
+  The fee in wei required for each vote
+</ParamField>
+
+<Note>
+The entry fee is set at deployment time and determines how much ETH voters must send when calling the `vote()` function.
+</Note>

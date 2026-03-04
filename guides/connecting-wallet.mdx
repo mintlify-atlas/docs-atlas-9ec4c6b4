@@ -1,0 +1,114 @@
+---
+title: Connecting Your Wallet
+description: Learn how to connect your Web3 wallet to VoteLab using RainbowKit
+---
+
+VoteLab uses RainbowKit to provide a seamless wallet connection experience. You need to connect your wallet to participate in voting and interact with the smart contract.
+
+## Supported Networks
+
+VoteLab supports the following Ethereum networks:
+
+- **Anvil** (Local development network)
+- **Sepolia** (Ethereum testnet)
+
+<Info>
+The application is configured with network-specific transports. Anvil runs on `http://127.0.0.1:8545` for local testing.
+</Info>
+
+## Supported Wallets
+
+RainbowKit provides support for multiple wallet providers out of the box:
+
+- MetaMask
+- WalletConnect
+- Coinbase Wallet
+- Rainbow Wallet
+- And many more through WalletConnect protocol
+
+## Connecting Your Wallet
+
+<Steps>
+  <Step title="Click the Connect Button">
+    Navigate to the VoteLab application and click the "Connect Wallet" button in the navigation bar.
+  </Step>
+
+  <Step title="Select Your Wallet">
+    Choose your preferred wallet from the RainbowKit modal. If you're using a mobile wallet, you can scan the QR code with WalletConnect.
+  </Step>
+
+  <Step title="Approve the Connection">
+    Your wallet will prompt you to approve the connection. Review the details and click "Connect" or "Approve" in your wallet.
+  </Step>
+
+  <Step title="Verify Connection">
+    Once connected, you'll see your wallet address displayed in the navigation bar. The application will automatically detect your network.
+  </Step>
+</Steps>
+
+## RainbowKit Configuration
+
+VoteLab uses the default RainbowKit configuration with custom network settings:
+
+```tsx
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { anvil, sepolia } from 'wagmi/chains';
+import { http } from 'viem';
+
+export default getDefaultConfig({
+    appName: 'Voting Dapp',
+    projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '',
+    chains: [anvil, sepolia],
+    ssr: true,
+    transports: {
+        [anvil.id]: http('http://127.0.0.1:8545'),
+        [sepolia.id]: http(),
+    },
+});
+```
+
+<Note>
+The configuration includes server-side rendering (SSR) support for Next.js applications.
+</Note>
+
+## Switching Networks
+
+If you're connected to an unsupported network, RainbowKit will display a prompt to switch networks. Click the "Switch Network" button and select either Anvil or Sepolia from the list.
+
+<Warning>
+Make sure you're connected to the correct network before attempting to vote. Transactions submitted to the wrong network will fail.
+</Warning>
+
+## Troubleshooting
+
+### Wallet Not Detected
+
+If your wallet isn't showing up:
+
+1. Ensure your wallet extension is installed and unlocked
+2. Refresh the page and try connecting again
+3. Try using WalletConnect if you're on mobile
+
+### Connection Failed
+
+If the connection fails:
+
+1. Check that you're using a supported network (Anvil or Sepolia)
+2. Verify your wallet has sufficient ETH for gas fees
+3. Clear your browser cache and try again
+
+### Wrong Network
+
+If you're on the wrong network:
+
+1. Open the RainbowKit modal by clicking your address
+2. Click "Switch Network"
+3. Select the correct network (Anvil for local development or Sepolia for testnet)
+
+## Next Steps
+
+Once your wallet is connected, you're ready to:
+
+- [Cast votes](/guides/casting-votes) on active proposals
+- [View results](/guides/viewing-results) and track vote tallies
+- Monitor the prize pool and your voting history

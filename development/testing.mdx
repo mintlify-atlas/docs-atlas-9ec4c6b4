@@ -1,0 +1,500 @@
+---
+title: 'Testing'
+description: 'Comprehensive testing guide for VoteLab frontend and smart contracts'
+---
+
+## Testing Philosophy
+
+VoteLab maintains high code coverage to ensure reliability in financial transactions. The testing strategy covers:
+
+- **Frontend Components**: UI state management and user interactions
+- **Smart Contracts**: On-chain logic, security, and state transitions
+- **Integration**: Wallet connections and contract interactions
+
+<Note>
+  VoteLab uses a dual testing approach: **Vitest** for frontend and **Foundry** for smart contracts.
+</Note>
+
+## Frontend Testing (Vitest)
+
+### Overview
+
+The frontend test suite uses:
+- **Vitest v4.0.18** - Fast unit test framework
+- **React Testing Library v16.3.2** - Component testing utilities
+- **jsdom v28.1.0** - Browser environment simulation
+
+### Configuration
+
+Vitest is configured with jsdom environment and path aliases:
+
+```typescript title="vitest.config.ts"
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './test/setup.ts',
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});
+```
+
+### Test Setup
+
+The setup file configures testing utilities and mocks:
+
+```typescript title="test/setup.ts"
+import '@testing-library/jest-dom';
+import { vi } from 'vitest';
+
+// Mock window.matchMedia for components using media queries
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+```
+
+## Running Frontend Tests
+
+<CodeGroup>
+```bash Run All Tests
+npm test
+# Executes all tests in watch mode
+```
+
+```bash Run Once
+npm test -- --run
+# Single test run without watch mode
+```
+
+```bash Coverage Report
+npm test -- --coverage
+# Generates code coverage report
+```
+
+```bash Specific File
+npm test AdminPanel.test.tsx
+# Test a specific component
+```
+</CodeGroup>
+
+## Test Structure
+
+Tests are organized in the `/test/components` directory:
+
+```
+test/
+├── components/
+│   ├── AdminPanel.test.tsx
+│   ├── DashboardGrid.test.tsx
+│   └── DashboardInteractions.test.tsx
+└── setup.ts
+```
+
+## Testing Strategies
+
+### 1. Hook Mocking
+
+VoteLab tests mock the `useMemberVote` hook to simulate various contract states:
+
+```typescript title="test/components/AdminPanel.test.tsx"
+import { render, screen } from '@testing-library/react';
+import { AdminPanel } from '@/components/AdminPanel';
+import { useMemberVote } from '@/hooks/useMemberVote';
+import { vi, describe, it, expect, type Mock } from 'vitest';
+
+const mockedUseMemberVote = useMemberVote as Mock;
+
+// Mock the entire hook module
+vi.mock('@/hooks/useMemberVote', () => ({
+  useMemberVote: vi.fn(),
+}));
+
+describe('AdminPanel Visibility', () => {
+  it('should return null if the user is NOT the owner', () => {
+    mockedUseMemberVote.mockReturnValue({
+      isOwner: false,
+      workflowStation: 1,
+    });
+
+    const { container } = render(<AdminPanel />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('should show Admin Console if the user IS the owner', () => {
+    mockedUseMemberVote.mockReturnValue({
+      isOwner: true,
+      workflowStation: 1,
+      prizePool: '0',
+    });
+
+    render(<AdminPanel />);
+    expect(screen.getByText(/Admin Console/i)).toBeInTheDocument();
+  });
+});
+```
+
+<Tip>
+  Mocking hooks allows testing UI behavior without connecting to a blockchain.
+</Tip>
+
+### 2. Access Control Testing
+
+Verifies that the `AdminPanel` is physically absent from the DOM for unauthorized wallets:
+
+```typescript
+it('should return null if the user is NOT the owner', () => {
+  mockedUseMemberVote.mockReturnValue({
+    isOwner: false,
+    workflowStation: 1,
+  });
+
+  const { container } = render(<AdminPanel />);
+  expect(container.firstChild).toBeNull();
+});
+```
+
+**Why this matters:**
+- Prevents unauthorized access to admin controls
+- Ensures security at the UI layer
+- Tests owner validation logic
+
+### 3. User Interaction Testing
+
+Simulates user clicks to verify that `castVote` is triggered with the correct option ID:
+
+```typescript title="test/components/DashboardInteractions.test.tsx"
+import { render, screen, fireEvent } from '@testing-library/react';
+import { DashboardGrid } from '@/components/DashboardGrid';
+import { useMemberVote } from '@/hooks/useMemberVote';
+import { vi, describe, it, expect, type Mock } from 'vitest';
+
+const mockedUseMemberVote = useMemberVote as Mock;
+
+vi.mock('@/hooks/useMemberVote', () => ({
+  useMemberVote: vi.fn(),
+}));
+
+describe('DashboardGrid Interactions', () => {
+  it('calls castVote when the Sweet Banana button is clicked', () => {
+    const mockCastVote = vi.fn();
+
+    mockedUseMemberVote.mockReturnValue({
+      workflowStation: 1,
+      optionAVotes: 0,
+      optionBVotes: 0,
+      prizePool: '0',
+      isOwner: false,
+      hasVoted: false,
+      castVote: mockCastVote,
+    });
+
+    render(<DashboardGrid />);
+    const buttons = screen.getAllByRole('button');
+    const bananaButton = buttons[1];
+    fireEvent.click(bananaButton);
+
+    expect(mockCastVote).toHaveBeenCalledWith(1);
+    expect(mockCastVote).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+**Test coverage:**
+- Button click handlers work correctly
+- Correct vote option ID is passed
+- Functions are called exactly once
+
+### 4. State-Based Rendering
+
+Tests ensure the UI remains a faithful representation of blockchain state:
+
+<AccordionGroup>
+  <Accordion title="Workflow Stations">
+    Mock different contract states:
+
+    ```typescript
+    // Registering phase (station 0)
+    mockedUseMemberVote.mockReturnValue({
+      workflowStation: 0,
+      // ... other properties
+    });
+
+    // Voting phase (station 1)
+    mockedUseMemberVote.mockReturnValue({
+      workflowStation: 1,
+      // ... other properties
+    });
+
+    // Resetting phase (station 2)
+    mockedUseMemberVote.mockReturnValue({
+      workflowStation: 2,
+      // ... other properties
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Owner vs Non-Owner">
+    Test permission-based UI:
+
+    ```typescript
+    // Owner view
+    mockedUseMemberVote.mockReturnValue({
+      isOwner: true,
+      // Admin controls visible
+    });
+
+    // Regular user view
+    mockedUseMemberVote.mockReturnValue({
+      isOwner: false,
+      // Admin controls hidden
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Vote Status">
+    Test user voting state:
+
+    ```typescript
+    // User has already voted
+    mockedUseMemberVote.mockReturnValue({
+      hasVoted: true,
+      // Disable vote buttons
+    });
+
+    // User can still vote
+    mockedUseMemberVote.mockReturnValue({
+      hasVoted: false,
+      // Enable vote buttons
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Smart Contract Testing (Foundry)
+
+### Overview
+
+Smart contract tests ensure on-chain security and correctness:
+
+- **Unit Tests**: Coverage for every error revert
+- **State Checks**: Vote preservation during workflow transitions
+- **Security**: Access control validation
+
+<Warning>
+  Smart contract tests require Foundry to be installed. See the [setup guide](/development/setup#smart-contract-setup).
+</Warning>
+
+### Test Categories
+
+<CardGroup cols={2}>
+  <Card title="Error Handling" icon="triangle-exclamation">
+    Tests for reverts like `MemberVote__AlreadyVoted`
+  </Card>
+  <Card title="State Transitions" icon="arrows-rotate">
+    Workflow station changes and vote counting
+  </Card>
+  <Card title="Access Control" icon="shield">
+    Owner-only functions like `withdraw()`
+  </Card>
+  <Card title="Financial Logic" icon="dollar-sign">
+    Entry fees and prize pool management
+  </Card>
+</CardGroup>
+
+### Running Contract Tests
+
+```bash
+# Navigate to contract repository
+cd Smart-Voting-Contract
+
+# Run all contract tests
+forge test
+
+# Run with verbosity
+forge test -vvv
+
+# Run specific test
+forge test --match-test testCannotVoteTwice
+
+# Generate coverage report
+forge coverage
+```
+
+### Key Test Scenarios
+
+<AccordionGroup>
+  <Accordion title="Vote Counting">
+    Ensures `optionAVotes` and `optionBVotes` are preserved during the `Resetting` phase:
+
+    ```solidity
+    function testVoteCountsPreservedDuringReset() public {
+        // Votes are cast during Voting phase
+        // Transition to Resetting phase
+        // Verify vote counts remain unchanged
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Security">
+    Proves that non-owners cannot call `withdraw()` or `startVote()`:
+
+    ```solidity
+    function testNonOwnerCannotWithdraw() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        memberVote.withdraw();
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Entry Fee">
+    Validates the entry fee requirement:
+
+    ```solidity
+    function testCannotVoteWithoutFee() public {
+        vm.expectRevert(MemberVote__InsufficientFee.selector);
+        memberVote.vote(0);
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Write Tests First">
+    Follow Test-Driven Development (TDD) principles:
+    1. Write a failing test
+    2. Implement the feature
+    3. Ensure the test passes
+  </Step>
+
+  <Step title="Mock External Dependencies">
+    Always mock:
+    - Wallet connections
+    - Contract read/write hooks
+    - Network requests
+  </Step>
+
+  <Step title="Test Edge Cases">
+    Cover scenarios like:
+    - Empty states
+    - Maximum values
+    - Unauthorized access
+    - Network failures
+  </Step>
+
+  <Step title="Maintain High Coverage">
+    Aim for:
+    - 80%+ line coverage
+    - 100% coverage for critical paths (voting, admin actions)
+  </Step>
+</Steps>
+
+## Continuous Integration
+
+<Tip>
+  Add tests to your CI/CD pipeline to catch issues early:
+
+  ```yaml title=".github/workflows/test.yml"
+  - name: Run Frontend Tests
+    run: npm test -- --run
+
+  - name: Run Contract Tests
+    run: forge test
+  ```
+</Tip>
+
+## Debugging Tests
+
+### Vitest Debugging
+
+<CodeGroup>
+```bash Debug Mode
+npm test -- --reporter=verbose
+# Detailed test output
+```
+
+```bash UI Mode
+npm test -- --ui
+# Opens browser-based test UI
+```
+
+```bash Watch Single File
+npm test AdminPanel.test.tsx -- --watch
+# Watch mode for specific file
+```
+</CodeGroup>
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Hook mocking not working">
+    Ensure the mock is defined before imports:
+
+    ```typescript
+    vi.mock('@/hooks/useMemberVote', () => ({
+      useMemberVote: vi.fn(),
+    }));
+
+    // Then import the component
+    import { AdminPanel } from '@/components/AdminPanel';
+    ```
+  </Accordion>
+
+  <Accordion title="Component not rendering">
+    Check if required providers are wrapped:
+
+    ```typescript
+    render(
+      <WagmiProvider>
+        <QueryClientProvider>
+          <YourComponent />
+        </QueryClientProvider>
+      </WagmiProvider>
+    );
+    ```
+  </Accordion>
+
+  <Accordion title="Async state updates">
+    Use `waitFor` for async operations:
+
+    ```typescript
+    import { waitFor } from '@testing-library/react';
+
+    await waitFor(() => {
+      expect(screen.getByText('Loaded')).toBeInTheDocument();
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="wrench" href="/development/setup">
+    Configure your development environment
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/development/deployment">
+    Deploy to production
+  </Card>
+</CardGroup>

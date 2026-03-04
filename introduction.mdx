@@ -1,0 +1,272 @@
+---
+title: Welcome to VoteLab
+description: Production-grade Web3 voting protocol with secure governance
+mode: custom
+---
+
+<div className="relative overflow-hidden bg-gradient-to-br from-[#0f1117] via-[#1a1d27] to-[#0f1117] py-20 dark:bg-gradient-to-br dark:from-[#0f1117] dark:via-[#1a1d27] dark:to-[#0f1117]">
+  <div className="max-w-7xl mx-auto px-6 lg:px-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <div className="lg:col-span-7 space-y-8">
+        <div className="space-y-6">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white leading-tight">
+            Decentralized Governance
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#818cf8]">
+              Built for Security
+            </span>
+          </h1>
+          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed">
+            VoteLab is a production-grade Web3 voting application featuring a three-stage state machine, automated winner determination, and secure administrative controls. Built with type safety, on-chain security, and test-driven development at its core.
+          </p>
+        </div>
+        
+        <div className="flex flex-wrap gap-4">
+          <a 
+            href="/quickstart"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[#6366f1] hover:bg-[#4f46e5] text-white font-semibold rounded-lg transition-colors shadow-lg hover:shadow-xl"
+          >
+            Get Started
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a 
+            href="/api/contract-overview"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 dark:bg-white/10 dark:hover:bg-white/20 text-gray-900 dark:text-white font-semibold rounded-lg border border-white/30 dark:border-white/30 transition-colors"
+          >
+            View API Reference
+          </a>
+        </div>
+
+        <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200 dark:border-[#27272a]">
+          <div>
+            <div className="text-3xl font-bold text-[#6366f1]">3</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">Workflow States</div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-[#6366f1]">100%</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">Test Coverage</div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-[#6366f1]">0.01 ETH</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">Entry Fee</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#818cf8] rounded-2xl blur-3xl opacity-20"></div>
+          <div className="relative bg-[#1a1d27] dark:bg-[#1a1d27] border border-[#27272a] dark:border-[#27272a] rounded-2xl p-8 shadow-2xl">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-[#6366f1] rounded-full animate-pulse"></div>
+                <span className="text-sm font-semibold text-gray-300 dark:text-gray-300">Live Election Status</span>
+              </div>
+              <div className="space-y-3">
+                <div className="bg-[#242838] dark:bg-[#242838] rounded-lg p-4 border border-[#27272a] dark:border-[#27272a]">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wider">Option A</span>
+                    <span className="text-sm font-bold text-white dark:text-white">67.3%</span>
+                  </div>
+                  <div className="h-2 bg-[#1a1d27] dark:bg-[#1a1d27] rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-[#6366f1] to-[#818cf8] rounded-full" style={{width: '67.3%'}}></div>
+                  </div>
+                </div>
+                <div className="bg-[#242838] dark:bg-[#242838] rounded-lg p-4 border border-[#27272a] dark:border-[#27272a]">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wider">Option B</span>
+                    <span className="text-sm font-bold text-white dark:text-white">32.7%</span>
+                  </div>
+                  <div className="h-2 bg-[#1a1d27] dark:bg-[#1a1d27] rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-[#6366f1] to-[#818cf8] rounded-full" style={{width: '32.7%'}}></div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-4 border-t border-[#27272a] dark:border-[#27272a]">
+                <span className="text-xs text-gray-400 dark:text-gray-400">Prize Pool</span>
+                <span className="text-sm font-bold text-[#6366f1]">0.52 ETH</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Quick Start Guide</h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">Get up and running with VoteLab in minutes</p>
+  </div>
+
+  <Steps>
+    <Step title="Connect Your Wallet">
+      Click the **Connect Wallet** button in the header to connect your Web3 wallet using RainbowKit. VoteLab supports all major wallet providers including MetaMask, WalletConnect, and Coinbase Wallet.
+      
+      ```typescript
+      // Wallet connection is handled automatically via RainbowKit
+      const { address, isConnected } = useAccount();
+      ```
+    </Step>
+
+    <Step title="Review Election Status">
+      Check the current workflow state to see if voting is open. The contract operates in three states:
+      - **Registering**: Admin is preparing the election
+      - **Voting**: Polls are open for participation
+      - **Resetting**: Election closed, results locked
+
+      ```typescript
+      const { workflowStation } = useMemberVote();
+      // 0 = Registering, 1 = Voting, 2 = Resetting
+      ```
+    </Step>
+
+    <Step title="Cast Your Vote">
+      When voting is open, select your preferred option and click **Cast Your Vote**. You'll need to pay the entry fee of 0.01 ETH along with gas fees.
+
+      ```typescript
+      const { castVote, isPending } = useMemberVote();
+      
+      // Vote for Option A (ID: 1) or Option B (ID: 2)
+      castVote(1);
+      ```
+
+      <Note>
+        Each wallet can only vote once per election. Your vote is recorded on-chain and cannot be changed.
+      </Note>
+    </Step>
+
+    <Step title="View Results">
+      After voting closes, the dashboard displays the winner and final vote counts. Entry fees form a prize pool that the admin can withdraw.
+
+      ```typescript
+      const { optionAVotes, optionBVotes, prizePool } = useMemberVote();
+      
+      console.log(`Option A: ${optionAVotes} votes`);
+      console.log(`Option B: ${optionBVotes} votes`);
+      console.log(`Prize Pool: ${prizePool} ETH`);
+      ```
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Explore by Topic</h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">Deep dive into VoteLab's features and capabilities</p>
+  </div>
+
+  <CardGroup cols={3}>
+    <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+      Understand the finite state machine and contract design patterns
+    </Card>
+    <Card title="Security Model" icon="shield-halved" href="/concepts/security-model">
+      Learn about access controls and sybil attack prevention
+    </Card>
+    <Card title="Admin Controls" icon="user-gear" href="/admin/overview">
+      Manage elections and withdraw funds with secure admin functions
+    </Card>
+    <Card title="Smart Contract API" icon="file-contract" href="/api/contract-overview">
+      Complete reference for all contract functions and events
+    </Card>
+    <Card title="React Integration" icon="react" href="/api/hooks">
+      Use the useMemberVote hook to build voting interfaces
+    </Card>
+    <Card title="Testing Guide" icon="flask" href="/development/testing">
+      Run Vitest and Foundry tests for frontend and contract code
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Key Features</h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">What makes VoteLab production-ready</p>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] rounded-xl p-6 hover:border-[#6366f1] dark:hover:border-[#6366f1] transition-colors">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-10 h-10 bg-[#6366f1]/10 dark:bg-[#6366f1]/10 rounded-lg flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#6366f1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Sybil Attack Prevention</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Entry fee mechanism ensures one vote per wallet, preventing spam and manipulation</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] rounded-xl p-6 hover:border-[#6366f1] dark:hover:border-[#6366f1] transition-colors">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-10 h-10 bg-[#6366f1]/10 dark:bg-[#6366f1]/10 rounded-lg flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#6366f1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Real-Time Vote Counting</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Live dashboard displays current vote tallies and automatically determines winners</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] rounded-xl p-6 hover:border-[#6366f1] dark:hover:border-[#6366f1] transition-colors">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-10 h-10 bg-[#6366f1]/10 dark:bg-[#6366f1]/10 rounded-lg flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#6366f1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Secure Admin Controls</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">onlyOwner access pattern restricts election management to contract deployer</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] rounded-xl p-6 hover:border-[#6366f1] dark:hover:border-[#6366f1] transition-colors">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-10 h-10 bg-[#6366f1]/10 dark:bg-[#6366f1]/10 rounded-lg flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#6366f1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Comprehensive Testing</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Full test coverage with Vitest for frontend and Foundry for smart contracts</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="bg-gradient-to-br from-[#6366f1] to-[#4f46e5] dark:from-[#6366f1] dark:to-[#4f46e5] rounded-2xl p-12 text-center">
+    <h2 className="text-3xl font-bold text-white mb-4">Ready to Build?</h2>
+    <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+      Start building decentralized governance applications with VoteLab's secure, production-ready protocol
+    </p>
+    <div className="flex flex-wrap justify-center gap-4">
+      <a 
+        href="/quickstart"
+        className="inline-flex items-center gap-2 px-8 py-4 bg-white hover:bg-gray-100 text-[#6366f1] font-semibold rounded-lg transition-colors shadow-lg"
+      >
+        Get Started Now
+      </a>
+      <a 
+        href="https://github.com/Pragyat-Nikunj/Voting-Dapp"
+        className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg border border-white/30 transition-colors"
+      >
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+        </svg>
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</div>

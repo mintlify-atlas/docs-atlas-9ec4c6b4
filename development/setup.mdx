@@ -1,0 +1,278 @@
+---
+title: 'Development Setup'
+description: 'Set up your local development environment for VoteLab'
+---
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node">
+    Version 18 or higher required
+  </Card>
+  <Card title="Foundry" icon="hammer">
+    For smart contract testing
+  </Card>
+</CardGroup>
+
+<Note>
+  VoteLab is built with Next.js 16 and requires Node.js v18+ for optimal performance.
+</Note>
+
+## Installation
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the VoteLab repository from GitHub:
+
+    ```bash
+    git clone https://github.com/Pragyat-Nikunj/Voting-Dapp.git
+    cd Voting-Dapp
+    ```
+  </Step>
+
+  <Step title="Navigate to Frontend Directory">
+    Move into the frontend application directory:
+
+    ```bash
+    cd frontend
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+
+    ```bash
+    npm install
+    ```
+
+    This will install key dependencies including:
+    - **Next.js 16.1.6** - React framework with App Router
+    - **Wagmi v2.19.5** - Web3 React hooks
+    - **Viem v2.46.2** - TypeScript Ethereum library
+    - **RainbowKit v2.2.10** - Wallet connection UI
+    - **Tailwind CSS v4** - Utility-first styling
+    - **Framer Motion v12** - Animation library
+  </Step>
+
+  <Step title="Start Development Server">
+    Launch the local development server:
+
+    ```bash
+    npm run dev
+    ```
+
+    The application will be available at `http://localhost:3000`
+  </Step>
+</Steps>
+
+## Project Structure
+
+VoteLab follows Next.js 16 App Router conventions:
+
+```
+frontend/
+├── src/
+│   ├── app/              # Next.js App Router pages
+│   ├── components/       # React components
+│   │   ├── AdminPanel.tsx
+│   │   └── DashboardGrid.tsx
+│   └── hooks/            # Custom React hooks
+│       └── useMemberVote.ts
+├── test/
+│   ├── components/       # Component tests
+│   └── setup.ts          # Vitest configuration
+├── package.json
+├── next.config.ts
+├── vitest.config.ts
+└── tsconfig.json
+```
+
+## Key Dependencies
+
+### Web3 Stack
+
+<AccordionGroup>
+  <Accordion title="Wagmi & Viem">
+    VoteLab uses Wagmi v2 for React hooks and Viem for low-level Ethereum interactions.
+
+    ```typescript
+    // Example: Reading contract data
+    const { data: workflowStation } = useReadContract({
+      address: contractAddress,
+      abi: contractABI,
+      functionName: 'getWorkflowStation',
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="RainbowKit">
+    Provides a beautiful wallet connection interface with support for multiple wallet providers.
+
+    Key features:
+    - MetaMask, WalletConnect, Coinbase Wallet support
+    - Customizable theming
+    - Built-in chain switching
+  </Accordion>
+</AccordionGroup>
+
+### Frontend Technologies
+
+<CardGroup cols={2}>
+  <Card title="Next.js 16" icon="react">
+    App Router with React Server Components
+  </Card>
+  <Card title="TypeScript" icon="code">
+    Full type safety across the application
+  </Card>
+  <Card title="Tailwind CSS v4" icon="paintbrush">
+    Utility-first styling with PostCSS
+  </Card>
+  <Card title="Lucide React" icon="icons">
+    Modern icon library
+  </Card>
+</CardGroup>
+
+## Configuration Files
+
+### Next.js Configuration
+
+The project uses React Compiler for optimized performance:
+
+```typescript title="next.config.ts"
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactCompiler: true,
+};
+
+export default nextConfig;
+```
+
+### TypeScript
+
+Path aliases are configured for clean imports:
+
+```typescript
+import { AdminPanel } from '@/components/AdminPanel';
+import { useMemberVote } from '@/hooks/useMemberVote';
+```
+
+<Note>
+  The `@` alias maps to the `./src` directory for convenient imports.
+</Note>
+
+## Smart Contract Setup
+
+<Warning>
+  Smart contract development requires Foundry to be installed separately.
+</Warning>
+
+For smart contract development and testing:
+
+<Steps>
+  <Step title="Install Foundry">
+    Follow the [Foundry installation guide](https://book.getfoundry.sh/getting-started/installation):
+
+    ```bash
+    curl -L https://foundry.paradigm.xyz | bash
+    foundryup
+    ```
+  </Step>
+
+  <Step title="Access Contract Repository">
+    The smart contract is maintained in a separate repository:
+
+    ```bash
+    git clone https://github.com/Pragyat-Nikunj/Smart-Voting-Contract.git
+    ```
+  </Step>
+
+  <Step title="Compile Contracts">
+    ```bash
+    forge build
+    ```
+  </Step>
+</Steps>
+
+## Available Scripts
+
+VoteLab includes several npm scripts for development:
+
+<CodeGroup>
+```bash Development
+npm run dev
+# Starts Next.js development server on port 3000
+```
+
+```bash Build
+npm run build
+# Creates optimized production build
+```
+
+```bash Production
+npm start
+# Runs production server (requires build first)
+```
+
+```bash Testing
+npm test
+# Runs Vitest test suite
+```
+
+```bash Linting
+npm run lint
+# Checks code with ESLint
+
+npm run lint:fix
+# Auto-fixes ESLint issues
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Node version issues">
+    Ensure you're using Node.js v18 or higher:
+
+    ```bash
+    node --version
+    ```
+
+    Consider using [nvm](https://github.com/nvm-sh/nvm) to manage Node versions:
+
+    ```bash
+    nvm install 18
+    nvm use 18
+    ```
+  </Accordion>
+
+  <Accordion title="Dependency conflicts">
+    If you encounter dependency issues, try clearing the cache:
+
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    If port 3000 is occupied, specify a different port:
+
+    ```bash
+    PORT=3001 npm run dev
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Learn about the testing strategy
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/development/deployment">
+    Deploy VoteLab to production
+  </Card>
+</CardGroup>

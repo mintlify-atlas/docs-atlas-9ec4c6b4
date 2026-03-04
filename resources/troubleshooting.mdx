@@ -1,0 +1,460 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for VoteLab
+---
+
+## Wallet Connection Issues
+
+### Cannot Connect Wallet
+
+<Steps>
+  <Step title="Check wallet extension">
+    Ensure your wallet browser extension is installed and unlocked:
+    - MetaMask, Coinbase Wallet, or other supported wallets
+    - The extension icon should be visible in your browser toolbar
+    - Your wallet should be unlocked and ready to use
+  </Step>
+
+  <Step title="Verify network connection">
+    Make sure you're connected to the correct blockchain network:
+    - Check that the network in your wallet matches the VoteLab deployment
+    - Look for network mismatch warnings in the interface
+    - Switch networks if prompted
+  </Step>
+
+  <Step title="Refresh the connection">
+    Try disconnecting and reconnecting:
+    - Click the disconnect button in VoteLab
+    - Close and reopen your wallet extension
+    - Refresh the browser page
+    - Reconnect your wallet
+  </Step>
+
+  <Step title="Clear cache and permissions">
+    If issues persist:
+    - Clear your browser cache and cookies
+    - Check wallet settings and remove VoteLab permissions
+    - Re-grant permissions when reconnecting
+  </Step>
+</Steps>
+
+### Wallet Connected But No Address Shown
+
+<Warning>
+  This usually indicates a Web3 provider issue.
+</Warning>
+
+Check the following:
+
+1. **Provider compatibility**: Ensure your wallet supports the Wagmi v2 and Viem libraries
+2. **Console errors**: Open browser DevTools (F12) and check for JavaScript errors
+3. **Account permissions**: Make sure you've approved the connection in your wallet
+4. **Multiple wallets**: Disable other wallet extensions that might conflict
+
+## Transaction Failures
+
+### MemberVote__AlreadyVoted
+
+**Error:** Your transaction reverted with `MemberVote__AlreadyVoted`
+
+**Cause:** You have already voted in the current election cycle.
+
+**Solution:**
+- Each address can only vote once per election
+- Wait for the next election cycle to begin
+- The admin must complete the current election and start a new one
+- Check your voting status:
+  ```typescript
+  const { hasVoted, electionId } = useMemberVote();
+  ```
+
+<Note>
+  Your previous vote is still counted. You do not need to vote again.
+</Note>
+
+---
+
+### MemberVote__InvalidEntryFee
+
+**Error:** Transaction reverted with `MemberVote__InvalidEntryFee`
+
+**Cause:** The entry fee sent with your vote was not exactly 0.01 ETH.
+
+**Solution:**
+- The contract requires **exactly 0.01 ETH** to vote
+- Do not manually adjust the transaction value
+- Use the VoteLab interface, which automatically sets the correct amount:
+  ```typescript
+  // Automatically handled by the UI
+  castVote(option); // Sets value: parseEther("0.01")
+  ```
+- If using a custom integration, ensure:
+  ```typescript
+  value: parseEther("0.01")
+  ```
+
+<Warning>
+  Both underpaying and overpaying will cause the transaction to fail. The exact amount is enforced.
+</Warning>
+
+---
+
+### MemberVote__InvalidOption
+
+**Error:** Transaction reverted with `MemberVote__InvalidOption`
+
+**Cause:** You attempted to vote for an option that doesn't exist.
+
+**Solution:**
+- VoteLab currently supports **two options only** (Option A and Option B)
+- Valid option values are typically `0` and `1` (or `1` and `2` depending on implementation)
+- Use the voting buttons in the interface instead of custom transactions
+- If programmatically voting:
+  ```typescript
+  castVote(0); // Option A
+  castVote(1); // Option B
+  // Any other value will fail
+  ```
+
+---
+
+### MemberVote__WrongWorkflowStation
+
+**Error:** Transaction reverted with `MemberVote__WrongWorkflowStation`
+
+**Cause:** You attempted to vote during the wrong workflow state.
+
+**Solution:**
+- Votes can **only** be cast during the **Voting** state (state 1)
+- Check the current workflow state:
+  ```typescript
+  const { workflowStation } = useMemberVote();
+  // 0 = Registering (voting disabled)
+  // 1 = Voting (voting enabled)
+  // 2 = Resetting (voting disabled)
+  ```
+- Wait for the admin to transition to the Voting state
+- The interface should display the current state and disable voting buttons when inappropriate
+
+<Note>
+  This protection ensures votes cannot be cast during setup or after the election closes.
+</Note>
+
+---
+
+### MemberVote__NotOwner
+
+**Error:** Transaction reverted with `MemberVote__NotOwner`
+
+**Cause:** You attempted to call an admin function without owner privileges.
+
+**Solution:**
+- Only the contract owner (deployer) can:
+  - Start elections with `startVote()`
+  - Close voting with `resetVotes()`
+  - Withdraw funds with `withdraw()`
+- The Admin HUD should only appear if you're the owner:
+  ```typescript
+  const { isOwner } = useMemberVote();
+  ```
+- If you are the owner but seeing this error:
+  - Verify you're connected with the correct wallet address
+  - Check that your address matches the contract owner:
+    ```typescript
+    getOwner() // Compare with your connected address
+    ```
+
+---
+
+### MemberVote__WithdrawFailed
+
+**Error:** Transaction reverted with `MemberVote__WithdrawFailed`
+
+**Cause:** The contract's attempt to transfer funds to the owner failed.
+
+**Solution:**
+
+<Steps>
+  <Step title="Check receiving address">
+    Ensure the owner address can receive funds:
+    - EOA (Externally Owned Accounts) can always receive
+    - Smart contract addresses may reject payments
+  </Step>
+
+  <Step title="Verify contract balance">
+    Ensure there are funds to withdraw:
+    ```typescript
+    const { prizePool } = useMemberVote();
+    ```
+    If the prize pool is 0, there's nothing to withdraw.
+  </Step>
+
+  <Step title="Check gas limits">
+    Transaction may be running out of gas:
+    - Increase gas limit in your wallet
+    - Try again during lower network congestion
+  </Step>
+
+  <Step title="Review smart contract">
+    If the owner is a smart contract:
+    - It must have a receive or fallback function
+    - Check for restrictions that block payments
+  </Step>
+</Steps>
+
+---
+
+## State Transition Issues
+
+### Election Stuck in Registering State
+
+**Symptom:** Cannot vote, state shows "Registering"
+
+**Cause:** The admin has not started the voting period.
+
+**Solution:**
+- Only the contract owner can start voting
+- Owner must call `startVote()` to transition to the Voting state
+- If you're the owner:
+  1. Open the Admin HUD
+  2. Click "Start Election"
+  3. Confirm the transaction
+  4. Wait for transaction confirmation
+
+<Note>
+  When `startVote()` is called, it clears the voters array, resets vote counts to 0, and opens the polls.
+</Note>
+
+### Cannot See Results After Voting Closes
+
+**Symptom:** Results not displayed, state shows "Voting"
+
+**Cause:** The election has not been closed yet.
+
+**Solution:**
+- The admin must call `resetVotes()` to close voting and enter the Resetting state
+- Results are only visible after transitioning to state 2 (Resetting)
+- If you're the owner:
+  1. Ensure voting has concluded
+  2. Click "Close Voting" in the Admin HUD
+  3. Confirm the transaction
+  4. The winner screen will appear
+
+**Data Persistence:**
+The Resetting phase preserves `optionAVotes` and `optionBVotes` specifically for frontend visualization before clearing state for the next election cycle.
+
+### State Not Updating After Transaction
+
+**Symptom:** UI shows old state even after confirmed transaction
+
+**Solution:**
+
+<Steps>
+  <Step title="Wait for confirmation">
+    Ensure the transaction is fully confirmed:
+    ```typescript
+    const { isPending, hash } = useMemberVote();
+    ```
+    The `isPending` flag should be false.
+  </Step>
+
+  <Step title="Automatic refetch">
+    The `useMemberVote` hook automatically refetches data on transaction success:
+    ```typescript
+    useEffect(() => {
+      if (txSuccess) {
+        refetchStatus();
+        refetchElectionId();
+        refetchUserStatus();
+        refetchA();
+        refetchB();
+        refetchBalance();
+      }
+    }, [txSuccess]);
+    ```
+  </Step>
+
+  <Step title="Manual refresh">
+    If automatic refresh fails, try:
+    ```typescript
+    const { refetchAll } = useMemberVote();
+    refetchAll();
+    ```
+    Or refresh the browser page.
+  </Step>
+
+  <Step title="Check RPC connection">
+    Slow or unstable RPC nodes can delay updates:
+    - Try switching RPC endpoints
+    - Check network status
+    - Wait a few more seconds for propagation
+  </Step>
+</Steps>
+
+---
+
+## Interface Issues
+
+### Admin Panel Not Visible
+
+**Symptom:** Cannot see admin controls despite being the owner
+
+**Solution:**
+
+1. **Verify ownership**:
+   ```typescript
+   const { isOwner, address } = useMemberVote();
+   console.log('My address:', address);
+   console.log('Am I owner?', isOwner);
+   ```
+
+2. **Address format**: The comparison is case-insensitive:
+   ```typescript
+   address?.toLowerCase() === ownerAddress?.toLowerCase()
+   ```
+   But ensure you're connected with the correct wallet.
+
+3. **Contract query**: Verify the contract's owner:
+   - Call `getOwner()` directly
+   - Compare with your connected address
+   - Switch to the owner wallet if needed
+
+<Warning>
+  The Admin HUD is physically absent from the DOM for non-owners. This is a security feature tested in the Vitest suite.
+</Warning>
+
+### Vote Counts Not Updating
+
+**Symptom:** Vote counts remain at 0 or don't increment
+
+**Solution:**
+
+1. **Check workflow state**: Vote counts only increment during the Voting state
+2. **Confirm transactions**: Ensure votes are actually being confirmed on-chain
+3. **Manual refetch**:
+   ```typescript
+   const { refetchA, refetchB } = useMemberVote();
+   refetchA();
+   refetchB();
+   ```
+4. **RPC lag**: Some RPC nodes have delays; wait 10-15 seconds and refresh
+
+### Buttons Disabled Despite Correct State
+
+**Symptom:** Voting buttons are disabled even during Voting state
+
+**Check:**
+
+1. **Connection status**:
+   ```typescript
+   const { isConnected } = useMemberVote();
+   ```
+   You must be connected to vote.
+
+2. **Already voted**:
+   ```typescript
+   const { hasVoted } = useMemberVote();
+   ```
+   Buttons disable if you've already voted.
+
+3. **Workflow state**:
+   ```typescript
+   const { workflowStation } = useMemberVote();
+   ```
+   Must be `1` (Voting state).
+
+4. **Transaction pending**:
+   ```typescript
+   const { isPending } = useMemberVote();
+   ```
+   Buttons disable during pending transactions to prevent double-voting.
+
+---
+
+## Network & Performance Issues
+
+### Slow Transaction Confirmations
+
+**Cause:** Network congestion or low gas prices
+
+**Solution:**
+- Increase gas price in your wallet settings
+- Use gas trackers to determine optimal gas price
+- Try again during off-peak hours
+- Check network status on block explorers
+
+### RPC Errors
+
+**Symptoms:**
+- "Failed to fetch"
+- "Network request failed"
+- Timeouts on contract reads
+
+**Solution:**
+- Switch to a different RPC provider
+- Check if the RPC endpoint is operational
+- Verify your internet connection
+- Try using a public RPC as fallback
+
+---
+
+## Development & Testing Issues
+
+### Contract Tests Failing
+
+**Foundry Tests:**
+```bash
+cd smart-contract
+forge test -vvv
+```
+
+- Check for proper test isolation
+- Verify contract state between tests
+- Ensure correct workflow state transitions
+- Review error revert messages
+
+**Frontend Tests (Vitest):**
+```bash
+npm test
+```
+
+- Mock the `useMemberVote` hook correctly
+- Simulate various contract states
+- Verify AdminPanel rendering logic
+- Check that `castVote` is triggered with correct option IDs
+
+### Type Errors with Wagmi/Viem
+
+**Issue:** TypeScript errors with contract interactions
+
+**Solution:**
+- Ensure ABI is properly typed
+- Use `as const` for ABI constant:
+  ```typescript
+  export const ABI = [...] as const;
+  ```
+- Update Wagmi and Viem to compatible versions
+- Check TypeScript version (requires v5+)
+
+---
+
+## Getting Additional Help
+
+If you continue experiencing issues:
+
+1. **Check contract on block explorer**: Verify the contract is deployed and accessible at:
+   ```
+   0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712
+   ```
+
+2. **Review console logs**: Open browser DevTools (F12) and check for errors
+
+3. **Examine transaction**: Look up failed transactions on the block explorer for detailed revert reasons
+
+4. **Test with minimal example**: Try voting from a fresh wallet with no history
+
+5. **Report bugs**: If you've found a bug in VoteLab, see the [Contributing Guide](/resources/contributing) for how to report it
+
+<Note>
+  For issues related to wallet-specific features, consult your wallet provider's documentation.
+</Note>

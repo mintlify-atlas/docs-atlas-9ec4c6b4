@@ -1,0 +1,328 @@
+---
+title: 'Components'
+description: 'React components for the VoteLab voting interface'
+---
+
+## AdminPanel
+
+Admin control panel that appears for contract owners. Provides buttons to manage voting phases and withdraw funds.
+
+### Import
+
+```typescript
+import { AdminPanel } from "@/components/AdminPanel";
+```
+
+### Props
+
+This component has no props - it uses the `useMemberVote` hook internally.
+
+### Behavior
+
+- Only renders if connected wallet is the contract owner
+- Displays as a fixed bottom panel with backdrop blur
+- Shows different controls based on workflow phase
+
+### Rendered Controls
+
+<ParamField body="Open Polls" type="button">
+  Visible during `REGISTERING` (0) or `RESETTING` (2) phases. Calls `startVote()` to begin voting.
+</ParamField>
+
+<ParamField body="Close & Tally" type="button">
+  Visible during `VOTING` (1) phase. Calls `resetVotes()` to end voting and tally results.
+</ParamField>
+
+<ParamField body="Collect {amount} ETH" type="button">
+  Visible when contract balance > 0. Calls `withdrawFunds()` to transfer ETH to owner.
+</ParamField>
+
+### Usage Example
+
+```typescript src/app/page.tsx
+import { AdminPanel } from "@/components/AdminPanel";
+import { DashboardGrid } from "@/components/DashboardGrid";
+
+export default function Home() {
+  return (
+    <main>
+      <DashboardGrid />
+      <AdminPanel /> {/* Automatically hidden for non-owners */}
+    </main>
+  );
+}
+```
+
+### Source Reference
+
+From `src/components/AdminPanel.tsx:8-66`:
+
+```typescript
+export const AdminPanel = () => {
+  const { 
+    workflowStation, prizePool, isOwner, 
+    startVote, resetVotes, withdrawFunds, isPending 
+  } = useMemberVote();
+
+  if (!isOwner) return null;
+
+  return (
+    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100]">
+      {/* Admin controls based on workflow phase */}
+    </div>
+  );
+};
+```
+
+---
+
+## VotingCard
+
+Displays a voting option with live vote count, percentage bar, and vote button.
+
+### Import
+
+```typescript
+import { VotingCard } from "@/components/VotingCard";
+```
+
+### Props
+
+<ParamField body="title" type="string" required>
+  Display name for the voting option (e.g., "Crispy Apple")
+</ParamField>
+
+<ParamField body="optionId" type="number" required>
+  Option identifier: `0` for Option A, `1` for Option B
+</ParamField>
+
+<ParamField body="votes" type="number" required>
+  Current vote count for this option
+</ParamField>
+
+<ParamField body="totalVotes" type="number" required>
+  Combined votes for both options (used to calculate percentage)
+</ParamField>
+
+<ParamField body="hasVoted" type="boolean" required>
+  Whether the connected user has already voted in this election
+</ParamField>
+
+### TypeScript Interface
+
+```typescript
+interface VotingCardProps {
+  title: string;
+  optionId: number;
+  votes: number;
+  totalVotes: number;
+  hasVoted: boolean;
+}
+```
+
+### Usage Example
+
+```typescript src/components/DashboardGrid.tsx
+import { VotingCard } from "@/components/VotingCard";
+import { useMemberVote } from "@/hooks/useMemberVote";
+
+export const DashboardGrid = () => {
+  const { optionAVotes, optionBVotes, hasVoted } = useMemberVote();
+  const totalVotes = optionAVotes + optionBVotes;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <VotingCard 
+        title="Crispy Apple" 
+        optionId={0} 
+        votes={optionAVotes} 
+        totalVotes={totalVotes} 
+        hasVoted={hasVoted}
+      />
+      <VotingCard 
+        title="Sweet Banana" 
+        optionId={1} 
+        votes={optionBVotes} 
+        totalVotes={totalVotes} 
+        hasVoted={hasVoted}
+      />
+    </div>
+  );
+};
+```
+
+### Button States
+
+<Tabs>
+  <Tab title="Active">
+    Voting is open, user hasn't voted yet
+    
+    ```typescript
+    className="bg-white text-slate-950 hover:bg-indigo-400"
+    disabled={false}
+    onClick={() => castVote(optionId)}
+    ```
+    
+    Button text: **"Cast Your Vote"**
+  </Tab>
+  
+  <Tab title="Processing">
+    Transaction is being confirmed
+    
+    ```typescript
+    {isPending && (
+      <div className="flex items-center gap-3">
+        <LoaderThree />
+        <span>Processing...</span>
+      </div>
+    )}
+    ```
+  </Tab>
+  
+  <Tab title="Completed">
+    User has already voted
+    
+    ```typescript
+    {hasVoted && (
+      <div className="flex items-center gap-2">
+        <CheckCircle2 className="h-4 w-4" />
+        <span>Vote Recorded</span>
+      </div>
+    )}
+    ```
+    
+    Button is disabled with green styling
+  </Tab>
+  
+  <Tab title="Closed">
+    Voting phase is not active
+    
+    ```typescript
+    className="bg-slate-800 text-slate-500 cursor-not-allowed"
+    disabled={true}
+    ```
+  </Tab>
+</Tabs>
+
+### Percentage Calculation
+
+From `src/components/VotingCard.tsx:21`:
+
+```typescript
+const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
+```
+
+Displayed as a gradient progress bar and numeric percentage.
+
+---
+
+## DashboardGrid
+
+Main dashboard component that orchestrates the voting interface based on workflow phase.
+
+### Import
+
+```typescript
+import { DashboardGrid } from "@/components/DashboardGrid";
+```
+
+### Props
+
+This component has no props - it manages its own state via `useMemberVote`.
+
+### Workflow Phases
+
+<Tabs>
+  <Tab title="REGISTERING (0)">
+    Shows a standby screen with sparkle icon
+    
+    ```typescript
+    {workflowStation === 0 && (
+      <div className="flex flex-col items-center">
+        <Sparkles className="w-16 h-16 animate-pulse" />
+        <h2>Governance Standby</h2>
+        <p>Voting will commence shortly.</p>
+      </div>
+    )}
+    ```
+  </Tab>
+  
+  <Tab title="VOTING (1)">
+    Displays the active voting interface with both VotingCards
+    
+    ```typescript
+    {workflowStation === 1 && (
+      <div className="space-y-16">
+        <h2>{election.question}</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <VotingCard title={election.optionA} optionId={0} ... />
+          <VotingCard title={election.optionB} optionId={1} ... />
+        </div>
+      </div>
+    )}
+    ```
+  </Tab>
+  
+  <Tab title="RESETTING (2)">
+    Shows results screen with winner announcement
+    
+    ```typescript
+    {workflowStation === 2 && (
+      <div className="flex flex-col items-center">
+        <Trophy className="w-20 h-20" />
+        <h2>{winner}</h2>
+        <p>Community Pool: {prizePool} ETH</p>
+      </div>
+    )}
+    ```
+    
+    Winner determined by:
+    ```typescript
+    optionAVotes === optionBVotes ? "Split Decision" : 
+    optionAVotes > optionBVotes ? election.optionA : election.optionB
+    ```
+  </Tab>
+</Tabs>
+
+### Usage Example
+
+```typescript src/app/page.tsx
+import { DashboardGrid } from "@/components/DashboardGrid";
+
+export default function Home() {
+  return (
+    <main className="min-h-screen">
+      <DashboardGrid />
+    </main>
+  );
+}
+```
+
+### Election Data Structure
+
+From `src/components/DashboardGrid.tsx:17-21`:
+
+```typescript
+const election = {
+  question: "Which fruit provides the best energy for coding sessions?",
+  optionA: "Crispy Apple",
+  optionB: "Sweet Banana"
+};
+```
+
+<Note>
+  The election data is currently hardcoded. In a production app, this would be fetched from the contract or a CMS.
+</Note>
+
+### "Recorded On-Chain" Badge
+
+Shown when user has voted:
+
+```typescript
+{hasVoted && (
+  <div className="inline-flex items-center gap-2 px-3 py-1">
+    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+    <span>Recorded On-Chain</span>
+  </div>
+)}
+```

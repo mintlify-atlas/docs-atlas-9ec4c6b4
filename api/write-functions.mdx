@@ -1,0 +1,354 @@
+---
+title: 'Write Functions'
+description: 'State-changing functions for voting and contract management'
+---
+
+Write functions modify contract state and require gas fees. Some functions are restricted to the contract owner.
+
+## vote
+
+Cast a vote for Option A or Option B. Requires sending the exact entry fee (0.01 ETH).
+
+```solidity
+function vote(uint256 option) external payable
+```
+
+### Parameters
+
+<ParamField path="option" type="uint256" required>
+  The voting option:
+  - `0`: Vote for Option A
+  - `1`: Vote for Option B
+</ParamField>
+
+### Requirements
+
+<AccordionGroup>
+  <Accordion title="Workflow State">
+    Contract must be in `VotingStarted` state (workflow station = 1)
+  </Accordion>
+  <Accordion title="Entry Fee">
+    Must send exactly 0.01 ETH with the transaction
+  </Accordion>
+  <Accordion title="Not Already Voted">
+    Address must not have already voted in the current election
+  </Accordion>
+  <Accordion title="Valid Option">
+    Option must be 0 or 1
+  </Accordion>
+</AccordionGroup>
+
+### Reverts With
+
+- `MemberVote__WrongWorkflowStation`: If voting hasn't started
+- `MemberVote__InvalidEntryFee`: If sent value is not 0.01 ETH
+- `MemberVote__AlreadyVoted`: If address has already voted
+- `MemberVote__InvalidOption`: If option is not 0 or 1
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useWriteContract } from 'wagmi';
+import { parseEther } from 'viem';
+import { ContractAddress, ABI } from '@/constants';
+
+const { writeContract, data: hash, isPending } = useWriteContract();
+
+const castVote = (option: number) => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'vote',
+    args: [BigInt(option)],
+    value: parseEther('0.01'), // 0.01 ETH entry fee
+  });
+};
+
+// Vote for Option A
+castVote(0);
+
+// Vote for Option B
+castVote(1);
+```
+
+```typescript Viem
+import { walletClient } from './client';
+import { parseEther } from 'viem';
+
+const hash = await walletClient.writeContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'vote',
+  args: [0n], // Vote for Option A
+  value: parseEther('0.01'),
+});
+
+await publicClient.waitForTransactionReceipt({ hash });
+```
+</CodeGroup>
+
+<Warning>
+Make sure to send exactly 0.01 ETH. Sending more or less will cause the transaction to revert with `MemberVote__InvalidEntryFee`.
+</Warning>
+
+---
+
+## startVote
+
+Starts a new voting session. Only the contract owner can call this function.
+
+```solidity
+function startVote() external
+```
+
+### Parameters
+
+None
+
+### Requirements
+
+<AccordionGroup>
+  <Accordion title="Owner Only">
+    Only the contract owner can start voting
+  </Accordion>
+  <Accordion title="Workflow State">
+    Contract must be in `RegisteringVoters` state (workflow station = 0)
+  </Accordion>
+</AccordionGroup>
+
+### Reverts With
+
+- `MemberVote__NotOwner`: If caller is not the contract owner
+- `MemberVote__WrongWorkflowStation`: If voting has already started
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useWriteContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { writeContract } = useWriteContract();
+
+const startVote = () => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'startVote',
+  });
+};
+```
+
+```typescript Viem
+import { walletClient } from './client';
+
+const hash = await walletClient.writeContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'startVote',
+});
+```
+</CodeGroup>
+
+<Info>
+Starting a vote transitions the contract from `RegisteringVoters` (0) to `VotingStarted` (1), allowing users to cast their votes.
+</Info>
+
+---
+
+## resetVotes
+
+Resets the voting session and increments the election ID. Only the contract owner can call this function.
+
+```solidity
+function resetVotes() external
+```
+
+### Parameters
+
+None
+
+### Requirements
+
+<AccordionGroup>
+  <Accordion title="Owner Only">
+    Only the contract owner can reset votes
+  </Accordion>
+  <Accordion title="Workflow State">
+    Typically called after voting has concluded
+  </Accordion>
+</AccordionGroup>
+
+### Effects
+
+- Resets vote counts for both options to 0
+- Increments the election ID
+- Resets the workflow station to `RegisteringVoters` (0)
+- Clears the voters array
+
+### Reverts With
+
+- `MemberVote__NotOwner`: If caller is not the contract owner
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useWriteContract } from 'wagmi';
+import { ContractAddress, ABI } from '@/constants';
+
+const { writeContract } = useWriteContract();
+
+const resetVotes = () => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'resetVotes',
+  });
+};
+```
+
+```typescript Viem
+import { walletClient } from './client';
+
+const hash = await walletClient.writeContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'resetVotes',
+});
+```
+</CodeGroup>
+
+<Warning>
+Resetting votes will clear all voting data and start a new election. Make sure to withdraw funds or record results before resetting.
+</Warning>
+
+---
+
+## withdraw
+
+Withdraws all accumulated ETH from the contract to the owner's address. Only the contract owner can call this function.
+
+```solidity
+function withdraw() external
+```
+
+### Parameters
+
+None
+
+### Requirements
+
+<AccordionGroup>
+  <Accordion title="Owner Only">
+    Only the contract owner can withdraw funds
+  </Accordion>
+  <Accordion title="Contract Balance">
+    Contract must have ETH balance to withdraw
+  </Accordion>
+</AccordionGroup>
+
+### Reverts With
+
+- `MemberVote__NotOwner`: If caller is not the contract owner
+- `MemberVote__WithdrawFailed`: If the ETH transfer fails
+
+### Usage Example
+
+<CodeGroup>
+```typescript Wagmi
+import { useWriteContract, useBalance } from 'wagmi';
+import { formatEther } from 'viem';
+import { ContractAddress, ABI } from '@/constants';
+
+const { writeContract } = useWriteContract();
+
+const { data: balanceData } = useBalance({
+  address: ContractAddress,
+});
+
+const prizePool = balanceData ? formatEther(balanceData.value) : '0';
+
+const withdrawFunds = () => {
+  writeContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: 'withdraw',
+  });
+};
+
+// Display prize pool
+console.log(`Prize Pool: ${prizePool} ETH`);
+
+// Withdraw when ready
+withdrawFunds();
+```
+
+```typescript Viem
+import { walletClient, publicClient } from './client';
+
+// Check contract balance first
+const balance = await publicClient.getBalance({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+});
+
+console.log(`Withdrawing ${formatEther(balance)} ETH`);
+
+const hash = await walletClient.writeContract({
+  address: '0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712',
+  abi: ABI,
+  functionName: 'withdraw',
+});
+```
+</CodeGroup>
+
+<Info>
+The prize pool accumulates from entry fees (0.01 ETH per vote). You can check the current balance using `useBalance` or `publicClient.getBalance`.
+</Info>
+
+## Transaction Monitoring
+
+After calling a write function, you should monitor the transaction status:
+
+<CodeGroup>
+```typescript Wagmi
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useEffect } from 'react';
+
+const { writeContract, data: hash, isPending, error } = useWriteContract();
+const { isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash });
+
+useEffect(() => {
+  if (txSuccess) {
+    // Refetch contract state after successful transaction
+    refetchStatus();
+    refetchElectionId();
+    refetchUserStatus();
+    refetchA();
+    refetchB();
+    refetchBalance();
+  }
+}, [txSuccess]);
+
+if (isPending) return <div>Confirming transaction...</div>;
+if (error) return <div>Error: {error.message}</div>;
+```
+
+```typescript Viem
+const hash = await walletClient.writeContract({ /* ... */ });
+
+// Wait for transaction confirmation
+const receipt = await publicClient.waitForTransactionReceipt({ 
+  hash,
+  confirmations: 2 // Wait for 2 confirmations
+});
+
+if (receipt.status === 'success') {
+  console.log('Transaction successful!');
+  // Refetch contract state
+} else {
+  console.error('Transaction failed');
+}
+```
+</CodeGroup>

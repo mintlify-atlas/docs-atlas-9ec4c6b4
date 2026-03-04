@@ -1,0 +1,443 @@
+---
+title: Contributing to VoteLab
+description: Learn how to contribute to the VoteLab project
+---
+
+## Welcome Contributors
+
+VoteLab is an open-source decentralized voting application, and we welcome contributions from the community. Whether you're fixing bugs, adding features, improving documentation, or enhancing tests, your contributions help make VoteLab better for everyone.
+
+<Note>
+  VoteLab is built with a focus on **Type Safety**, **On-Chain Security**, and **Test-Driven Development**. All contributions should maintain these core principles.
+</Note>
+
+---
+
+## License
+
+VoteLab is released under the **MIT License**.
+
+```
+MIT License
+
+Copyright (c) 2026 Pragyat Nikunj
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPORTART PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+By contributing to VoteLab, you agree that your contributions will be licensed under the MIT License.
+
+---
+
+## Ways to Contribute
+
+<CardGroup cols={2}>
+  <Card title="Report Bugs" icon="bug">
+    Found a bug? Open an issue on GitHub with detailed reproduction steps.
+  </Card>
+  <Card title="Suggest Features" icon="lightbulb">
+    Have an idea for improvement? Share it in the GitHub discussions or issues.
+  </Card>
+  <Card title="Submit Code" icon="code">
+    Fix bugs, add features, or improve performance with pull requests.
+  </Card>
+  <Card title="Improve Docs" icon="book">
+    Help others by enhancing documentation, guides, and examples.
+  </Card>
+  <Card title="Write Tests" icon="vial">
+    Increase code coverage with unit tests, integration tests, or e2e tests.
+  </Card>
+  <Card title="Review PRs" icon="magnifying-glass">
+    Review pull requests and provide constructive feedback.
+  </Card>
+</CardGroup>
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+Before contributing, ensure you have:
+
+- **Node.js** v18 or higher
+- **Foundry** for smart contract testing
+- **Git** for version control
+- A **Web3 wallet** for testing (MetaMask recommended)
+- Basic knowledge of:
+  - TypeScript and React
+  - Solidity and smart contracts
+  - Web3 development (Wagmi, Viem)
+
+### Setting Up Your Development Environment
+
+<Steps>
+  <Step title="Fork the repository">
+    Visit the VoteLab GitHub repository and click "Fork":
+    ```
+    https://github.com/Pragyat-Nikunj/Voting-Dapp
+    ```
+  </Step>
+
+  <Step title="Clone your fork">
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/Voting-Dapp.git
+    cd Voting-Dapp
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    cd frontend
+    npm install
+    ```
+  </Step>
+
+  <Step title="Run the development server">
+    ```bash
+    npm run dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) to see the app.
+  </Step>
+
+  <Step title="Run tests to ensure everything works">
+    **Frontend tests:**
+    ```bash
+    npm test
+    ```
+
+    **Smart contract tests:**
+    ```bash
+    cd ../smart-contract
+    forge test
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Development Workflow
+
+### Creating a Branch
+
+Always create a new branch for your work:
+
+```bash
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/your-bug-fix
+```
+
+Use descriptive branch names:
+- `feature/multi-option-voting`
+- `fix/wallet-connection-error`
+- `docs/update-api-reference`
+- `test/add-admin-panel-tests`
+
+### Making Changes
+
+<AccordionGroup>
+  <Accordion title="Frontend Development">
+    **Key files and directories:**
+    - `src/app/`: Next.js 16 App Router pages
+    - `src/components/`: React components
+    - `src/hooks/`: Custom hooks (e.g., `useMemberVote.ts`)
+    - `src/constants/`: Contract ABI and address
+    - `test/components/`: Vitest unit tests
+
+    **Best practices:**
+    - Use TypeScript for all new code
+    - Follow existing code style and conventions
+    - Ensure components are properly typed
+    - Use the `useMemberVote` hook for contract interactions
+    - Add tests for new components
+  </Accordion>
+
+  <Accordion title="Smart Contract Development">
+    **Key files:**
+    - Contract repository: [VoteLab Contract](https://github.com/Pragyat-Nikunj/Smart-Voting-Contract)
+    - `src/MemberVote.sol`: Main voting contract
+    - `test/`: Foundry tests
+
+    **Best practices:**
+    - Follow Solidity style guide
+    - Add NatSpec comments
+    - Ensure all state transitions are tested
+    - Test all error conditions
+    - Verify gas optimization
+    - Run security checks
+  </Accordion>
+
+  <Accordion title="Testing Guidelines">
+    **Frontend (Vitest + React Testing Library):**
+    ```bash
+    npm test
+    ```
+
+    Key testing areas:
+    - Mock `useMemberVote` hook for different states
+    - Test AdminPanel visibility (owner vs non-owner)
+    - Verify voting button interactions
+    - Ensure correct workflow state handling
+    - Test transaction flows
+
+    **Smart Contract (Foundry):**
+    ```bash
+    forge test -vvv
+    ```
+
+    Key testing areas:
+    - All error reverts (e.g., `MemberVote__AlreadyVoted`)
+    - State persistence during `Resetting` phase
+    - Access control (only owner functions)
+    - Vote counting accuracy
+    - Entry fee validation
+    - Withdrawal mechanism
+  </Accordion>
+
+  <Accordion title="Documentation">
+    **What to document:**
+    - New features and how to use them
+    - API changes or new functions
+    - Configuration options
+    - Troubleshooting steps
+    - Code comments for complex logic
+
+    **Documentation locations:**
+    - README.md for project overview
+    - Code comments for inline documentation
+    - Separate docs for user guides
+    - JSDoc/NatSpec for functions
+  </Accordion>
+</AccordionGroup>
+
+### Code Quality Standards
+
+<Warning>
+  All pull requests must pass CI/CD checks before merging.
+</Warning>
+
+Before submitting your contribution:
+
+1. **Run linters:**
+   ```bash
+   npm run lint
+   ```
+
+2. **Run tests:**
+   ```bash
+   npm test
+   forge test
+   ```
+
+3. **Check types:**
+   ```bash
+   npm run type-check
+   ```
+
+4. **Test manually:**
+   - Connect wallet and test all workflows
+   - Test as owner and non-owner
+   - Verify state transitions
+   - Check transaction confirmations
+
+---
+
+## Submitting a Pull Request
+
+<Steps>
+  <Step title="Commit your changes">
+    Write clear, descriptive commit messages:
+    ```bash
+    git add .
+    git commit -m "feat: add multi-option voting support"
+    ```
+
+    Use conventional commit format:
+    - `feat:` for new features
+    - `fix:` for bug fixes
+    - `docs:` for documentation
+    - `test:` for tests
+    - `refactor:` for code refactoring
+    - `style:` for formatting changes
+  </Step>
+
+  <Step title="Push to your fork">
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+  </Step>
+
+  <Step title="Create a pull request">
+    1. Go to the [VoteLab repository](https://github.com/Pragyat-Nikunj/Voting-Dapp)
+    2. Click "New Pull Request"
+    3. Select your fork and branch
+    4. Fill out the PR template with:
+       - Clear description of changes
+       - Motivation and context
+       - Screenshots (for UI changes)
+       - Testing steps
+       - Breaking changes (if any)
+  </Step>
+
+  <Step title="Address review feedback">
+    - Respond to reviewer comments
+    - Make requested changes
+    - Push updates to your branch
+    - Re-request review when ready
+  </Step>
+
+  <Step title="Merge">
+    Once approved, a maintainer will merge your PR. Thank you for contributing!
+  </Step>
+</Steps>
+
+---
+
+## Pull Request Guidelines
+
+### PR Checklist
+
+Before submitting, ensure:
+
+- [ ] Code follows project style guidelines
+- [ ] All tests pass (`npm test` and `forge test`)
+- [ ] New tests added for new functionality
+- [ ] Documentation updated (if applicable)
+- [ ] No console.log statements left in code
+- [ ] TypeScript types are correct
+- [ ] Commit messages follow conventional format
+- [ ] PR description clearly explains the changes
+
+### What Makes a Good PR?
+
+<CardGroup cols={2}>
+  <Card title="Focused Scope" icon="crosshairs">
+    Address one issue or feature per PR. Keep changes focused and reviewable.
+  </Card>
+  <Card title="Clear Description" icon="align-left">
+    Explain what, why, and how. Help reviewers understand your changes.
+  </Card>
+  <Card title="Test Coverage" icon="shield-check">
+    Include tests that verify your changes work as expected.
+  </Card>
+  <Card title="Documentation" icon="book-open">
+    Update docs to reflect new features or changed behavior.
+  </Card>
+</CardGroup>
+
+---
+
+## Reporting Issues
+
+### Bug Reports
+
+When reporting a bug, include:
+
+1. **Clear title**: Describe the issue concisely
+2. **Steps to reproduce**: Detailed steps to recreate the bug
+3. **Expected behavior**: What should happen
+4. **Actual behavior**: What actually happens
+5. **Environment**:
+   - Browser and version
+   - Wallet type
+   - Network (mainnet, testnet, local)
+   - Contract address
+6. **Screenshots/logs**: Visual evidence or console errors
+7. **Error messages**: Exact revert reasons from transactions
+
+### Feature Requests
+
+When suggesting a feature:
+
+1. **Use case**: Explain why this feature is needed
+2. **Proposed solution**: Describe how it should work
+3. **Alternatives considered**: Other approaches you've thought about
+4. **Impact**: Who benefits and how
+
+---
+
+## Community Guidelines
+
+### Code of Conduct
+
+Be respectful and professional:
+
+- **Be welcoming**: Help newcomers feel included
+- **Be respectful**: Treat everyone with respect and kindness
+- **Be constructive**: Provide helpful feedback
+- **Be collaborative**: Work together toward common goals
+- **Be patient**: Remember everyone is learning
+
+### Communication Channels
+
+- **GitHub Issues**: Bug reports and feature requests
+- **GitHub Discussions**: Questions and general discussions
+- **Pull Requests**: Code review and technical discussions
+
+---
+
+## Development Resources
+
+### Project Repositories
+
+<CardGroup cols={2}>
+  <Card title="Frontend Repository" icon="react" href="https://github.com/Pragyat-Nikunj/Voting-Dapp">
+    Main application repository with Next.js frontend
+  </Card>
+  <Card title="Smart Contract" icon="file-contract" href="https://github.com/Pragyat-Nikunj/Smart-Voting-Contract">
+    Solidity voting contract with Foundry tests
+  </Card>
+</CardGroup>
+
+### Technology Documentation
+
+- **Next.js**: [https://nextjs.org/docs](https://nextjs.org/docs)
+- **Wagmi**: [https://wagmi.sh](https://wagmi.sh)
+- **Viem**: [https://viem.sh](https://viem.sh)
+- **Foundry**: [https://book.getfoundry.sh](https://book.getfoundry.sh)
+- **Vitest**: [https://vitest.dev](https://vitest.dev)
+- **Solidity**: [https://docs.soliditylang.org](https://docs.soliditylang.org)
+
+---
+
+## Recognition
+
+We value all contributions, big or small. Contributors will be:
+
+- Listed in the project's contributors list
+- Mentioned in release notes for significant contributions
+- Recognized in the community
+
+Thank you for helping make VoteLab better for everyone!
+
+---
+
+## Questions?
+
+If you have questions about contributing:
+
+1. Check the [FAQ](/resources/faq) for common questions
+2. Review the [Troubleshooting Guide](/resources/troubleshooting)
+3. Search existing GitHub issues
+4. Open a new discussion on GitHub
+
+<Note>
+  **Project Maintainer**: Pragyat Nikunj  
+  For security vulnerabilities, please report privately rather than opening a public issue.
+</Note>

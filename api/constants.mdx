@@ -1,0 +1,311 @@
+---
+title: 'Constants'
+description: 'Contract address and ABI configuration for VoteLab'
+---
+
+## Overview
+
+The constants module exports the deployed contract address and ABI (Application Binary Interface) used throughout the application.
+
+### Import
+
+```typescript
+import { ContractAddress, ABI } from "@/constants";
+```
+
+---
+
+## ContractAddress
+
+The deployed MemberVote contract address on the target network.
+
+<ParamField body="ContractAddress" type="string">
+  Ethereum address of the deployed voting contract
+</ParamField>
+
+### Value
+
+```typescript
+export const ContractAddress = "0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712";
+```
+
+### Usage Example
+
+```typescript
+import { useReadContract } from "wagmi";
+import { ContractAddress, ABI } from "@/constants";
+
+const { data: votes } = useReadContract({
+  address: ContractAddress,
+  abi: ABI,
+  functionName: "getOptionAVotes",
+});
+```
+
+<Warning>
+  Ensure this address matches your deployed contract on the correct network. Update this value when deploying to mainnet or different testnets.
+</Warning>
+
+---
+
+## ABI
+
+The contract's Application Binary Interface defining all functions, events, and errors.
+
+<ParamField body="ABI" type="AbiItem[]">
+  Array of contract interface definitions in JSON format
+</ParamField>
+
+### Contract Functions
+
+#### Read Functions (View)
+
+<Tabs>
+  <Tab title="getWorkflowStation">
+    Returns the current voting phase
+    
+    ```typescript
+    functionName: "getWorkflowStation"
+    inputs: []
+    outputs: [{ type: "uint8" }] // 0, 1, or 2
+    ```
+    
+    **Returns:**
+    - `0` - REGISTERING
+    - `1` - VOTING
+    - `2` - RESETTING
+  </Tab>
+  
+  <Tab title="Vote Counts">
+    Get vote tallies for each option
+    
+    ```typescript
+    // Option A
+    functionName: "getOptionAVotes"
+    outputs: [{ type: "uint256" }]
+    
+    // Option B
+    functionName: "getOptionBVotes"
+    outputs: [{ type: "uint256" }]
+    ```
+  </Tab>
+  
+  <Tab title="Election Info">
+    ```typescript
+    // Current election ID
+    functionName: "getElectionId"
+    outputs: [{ type: "uint256" }]
+    
+    // Contract owner
+    functionName: "getOwner"
+    outputs: [{ type: "address" }]
+    
+    // All voters
+    functionName: "getVoters"
+    outputs: [{ type: "address[]" }]
+    ```
+  </Tab>
+  
+  <Tab title="addressVoted">
+    Check which election a voter participated in
+    
+    ```typescript
+    functionName: "addressVoted"
+    inputs: [{ name: "voter", type: "address" }]
+    outputs: [{ type: "uint256" }] // Election ID
+    ```
+  </Tab>
+</Tabs>
+
+#### Write Functions (State-Changing)
+
+<Tabs>
+  <Tab title="vote">
+    Cast a vote for an option (requires payment)
+    
+    ```typescript
+    functionName: "vote"
+    inputs: [{ name: "option", type: "uint256" }]
+    stateMutability: "payable"
+    ```
+    
+    **Usage:**
+    ```typescript
+    writeContract({
+      address: ContractAddress,
+      abi: ABI,
+      functionName: "vote",
+      args: [BigInt(0)], // 0 for Option A, 1 for Option B
+      value: parseEther("0.01"), // 0.01 ETH entry fee
+    });
+    ```
+  </Tab>
+  
+  <Tab title="startVote">
+    (Owner only) Begin voting phase
+    
+    ```typescript
+    functionName: "startVote"
+    inputs: []
+    stateMutability: "nonpayable"
+    ```
+  </Tab>
+  
+  <Tab title="resetVotes">
+    (Owner only) End voting and reset for new election
+    
+    ```typescript
+    functionName: "resetVotes"
+    inputs: []
+    stateMutability: "nonpayable"
+    ```
+  </Tab>
+  
+  <Tab title="withdraw">
+    (Owner only) Withdraw contract balance
+    
+    ```typescript
+    functionName: "withdraw"
+    inputs: []
+    stateMutability: "nonpayable"
+    ```
+  </Tab>
+</Tabs>
+
+### Contract Errors
+
+The ABI defines custom errors that may be thrown:
+
+<ResponseField name="MemberVote__AlreadyVoted" type="error">
+  User has already voted in the current election
+</ResponseField>
+
+<ResponseField name="MemberVote__InvalidEntryFee" type="error">
+  Incorrect payment amount sent with vote (must be exactly 0.01 ETH)
+</ResponseField>
+
+<ResponseField name="MemberVote__InvalidOption" type="error">
+  Vote option must be 0 or 1
+</ResponseField>
+
+<ResponseField name="MemberVote__NotOwner" type="error">
+  Only contract owner can call this function
+</ResponseField>
+
+<ResponseField name="MemberVote__WrongWorkflowStation" type="error">
+  Action not allowed in current voting phase
+</ResponseField>
+
+<ResponseField name="MemberVote__WithdrawFailed" type="error">
+  ETH transfer failed during withdrawal
+</ResponseField>
+
+### Full Usage Example
+
+```typescript src/hooks/useMemberVote.ts
+import { useReadContract, useWriteContract } from "wagmi";
+import { ContractAddress, ABI } from "@/constants";
+import { parseEther } from "viem";
+
+export const useMemberVote = () => {
+  const { writeContract } = useWriteContract();
+
+  // Read contract state
+  const { data: workflowStation } = useReadContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: "getWorkflowStation",
+  });
+
+  const { data: optionAVotes } = useReadContract({
+    address: ContractAddress,
+    abi: ABI,
+    functionName: "getOptionAVotes",
+  });
+
+  // Write to contract
+  const castVote = (option: number) => {
+    writeContract({
+      address: ContractAddress,
+      abi: ABI,
+      functionName: "vote",
+      args: [BigInt(option)],
+      value: parseEther("0.01"),
+    });
+  };
+
+  return {
+    workflowStation: workflowStation !== undefined ? Number(workflowStation) : 0,
+    optionAVotes: optionAVotes ? Number(optionAVotes) : 0,
+    castVote,
+  };
+};
+```
+
+### ABI Structure
+
+From `src/constants/index.ts:3-176`:
+
+```typescript
+export const ABI = [
+  {
+    type: "constructor",
+    inputs: [{ name: "entryFee", type: "uint256" }],
+    stateMutability: "nonpayable"
+  },
+  // Read functions
+  {
+    type: "function",
+    name: "getWorkflowStation",
+    inputs: [],
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view"
+  },
+  // Write functions
+  {
+    type: "function",
+    name: "vote",
+    inputs: [{ name: "option", type: "uint256" }],
+    outputs: [],
+    stateMutability: "payable"
+  },
+  // Errors
+  {
+    type: "error",
+    name: "MemberVote__AlreadyVoted",
+    inputs: []
+  },
+  // ... more definitions
+];
+```
+
+<Note>
+  The ABI is auto-generated from the Solidity contract. If you modify the smart contract, regenerate the ABI using your build tool (e.g., Hardhat, Foundry).
+</Note>
+
+## Type Safety
+
+For full TypeScript type safety, consider using [wagmi CLI](https://wagmi.sh/cli/getting-started) to generate typed hooks:
+
+```bash
+npm install @wagmi/cli
+```
+
+```typescript wagmi.config.ts
+import { defineConfig } from '@wagmi/cli'
+import { react } from '@wagmi/cli/plugins'
+
+export default defineConfig({
+  out: 'src/generated.ts',
+  contracts: [
+    {
+      name: 'MemberVote',
+      abi: ABI,
+      address: ContractAddress,
+    },
+  ],
+  plugins: [react()],
+})
+```
+
+This generates fully-typed hooks like `useReadMemberVoteGetWorkflowStation()` with autocomplete and type checking.

@@ -1,0 +1,472 @@
+---
+title: Installation
+description: Set up VoteLab as a user or run it locally for development
+---
+
+This guide covers two installation scenarios: connecting to the deployed VoteLab application as a user, and setting up a local development environment.
+
+## User Setup
+
+To use VoteLab as a voter, you only need a Web3 wallet and test ETH.
+
+<Steps>
+  <Step title="Install a Web3 Wallet">
+    Download and install a compatible wallet:
+
+    <CardGroup cols={2}>
+      <Card title="MetaMask" icon="fox" href="https://metamask.io">
+        Most popular browser extension wallet
+      </Card>
+      <Card title="Rainbow" icon="rainbow" href="https://rainbow.me">
+        Mobile-first wallet with desktop support
+      </Card>
+    </CardGroup>
+
+    Any WalletConnect-compatible wallet will work with VoteLab's RainbowKit integration.
+  </Step>
+
+  <Step title="Get Sepolia ETH">
+    VoteLab is deployed on Sepolia testnet. Get free test ETH from these faucets:
+
+    - [Alchemy Sepolia Faucet](https://sepoliafaucet.com/)
+    - [Infura Sepolia Faucet](https://www.infura.io/faucet/sepolia)
+    - [QuickNode Faucet](https://faucet.quicknode.com/ethereum/sepolia)
+
+    <Note>
+      You'll need at least 0.01 ETH for the entry fee plus additional ETH for gas fees.
+    </Note>
+  </Step>
+
+  <Step title="Add Sepolia Network">
+    If Sepolia isn't in your wallet, add it manually:
+
+    <CodeGroup>
+    ```json Network Configuration
+    {
+      "chainId": "0xaa36a7",
+      "chainName": "Sepolia",
+      "rpcUrls": ["https://rpc.sepolia.org"],
+      "nativeCurrency": {
+        "name": "Sepolia ETH",
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "blockExplorerUrls": ["https://sepolia.etherscan.io"]
+    }
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Connect to VoteLab">
+    Navigate to the deployed application and click "Connect Wallet." VoteLab will automatically prompt you to switch to Sepolia if needed.
+
+    <Warning>
+      Always verify you're connected to the correct contract address:
+      `0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712`
+    </Warning>
+  </Step>
+</Steps>
+
+## Developer Setup
+
+Run VoteLab locally to contribute to the project or customize the implementation.
+
+### Prerequisites
+
+Ensure you have these tools installed:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    Version 18 or higher
+  </Card>
+  <Card title="Foundry" icon="hammer">
+    For smart contract testing
+  </Card>
+</CardGroup>
+
+### Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone both the frontend and smart contract repositories:
+
+    <CodeGroup>
+    ```bash Frontend Repository
+    git clone https://github.com/Pragyat-Nikunj/Voting-Dapp.git
+    cd Voting-Dapp
+    ```
+
+    ```bash Smart Contract Repository
+    git clone https://github.com/Pragyat-Nikunj/Smart-Voting-Contract.git
+    cd Smart-Voting-Contract
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Install Frontend Dependencies">
+    Navigate to the frontend directory and install packages:
+
+    <CodeGroup>
+    ```bash npm
+    npm install
+    ```
+
+    ```bash yarn
+    yarn install
+    ```
+
+    ```bash pnpm
+    pnpm install
+    ```
+    </CodeGroup>
+
+    The project uses these key dependencies:
+
+    <CodeGroup>
+    ```json package.json
+    {
+      "dependencies": {
+        "@rainbow-me/rainbowkit": "^2.2.10",
+        "@tanstack/react-query": "^5.90.21",
+        "next": "16.1.6",
+        "react": "19.2.3",
+        "viem": "^2.46.2",
+        "wagmi": "^2.19.5",
+        "framer-motion": "^12.34.3",
+        "lucide-react": "^0.575.0"
+      },
+      "devDependencies": {
+        "vitest": "^4.0.18",
+        "@testing-library/react": "^16.3.2",
+        "typescript": "^5"
+      }
+    }
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure Environment">
+    Create a `.env.local` file in the frontend root with your WalletConnect Project ID:
+
+    <CodeGroup>
+    ```bash .env.local
+    NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_project_id_here
+    ```
+    </CodeGroup>
+
+    Get a free Project ID from [WalletConnect Cloud](https://cloud.walletconnect.com/).
+
+    <Note>
+      The contract address and ABI are already configured in `src/constants/index.ts`. You only need the WalletConnect ID for wallet connections.
+    </Note>
+  </Step>
+
+  <Step title="Review Network Configuration">
+    VoteLab is configured to work with Anvil (local) and Sepolia networks:
+
+    <CodeGroup>
+    ```tsx src/rainbowKitConfig.tsx
+    import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+    import { anvil, sepolia } from 'wagmi/chains';
+    import { http } from 'viem';
+
+    export default getDefaultConfig({
+      appName: 'Voting Dapp',
+      projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '',
+      chains: [anvil, sepolia],
+      ssr: true,
+      transports: {
+        [anvil.id]: http('http://127.0.0.1:8545'),
+        [sepolia.id]: http(),
+      },
+    });
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Start Development Server">
+    Run the Next.js development server:
+
+    <CodeGroup>
+    ```bash npm
+    npm run dev
+    ```
+
+    ```bash yarn
+    yarn dev
+    ```
+
+    ```bash pnpm
+    pnom dev
+    ```
+    </CodeGroup>
+
+    The application will be available at `http://localhost:3000`.
+  </Step>
+</Steps>
+
+## Testing
+
+VoteLab includes comprehensive test suites for both frontend and smart contract.
+
+### Frontend Tests (Vitest)
+
+The frontend uses Vitest and React Testing Library to ensure UI reliability:
+
+<CodeGroup>
+```bash Run Frontend Tests
+npm test
+```
+
+```bash Run with Coverage
+npm test -- --coverage
+```
+</CodeGroup>
+
+Test coverage includes:
+
+- **Component rendering** based on contract state
+- **Access control** for admin panel visibility
+- **User interactions** like vote casting
+- **Hook mocking** to simulate different workflow stations
+
+<Note>
+  Frontend tests are located in `/test/components` and mock the `useMemberVote` hook to simulate various contract states.
+</Note>
+
+### Smart Contract Tests (Foundry)
+
+The Solidity contract includes extensive unit tests:
+
+<CodeGroup>
+```bash Run Contract Tests
+forge test
+```
+
+```bash Run with Verbosity
+forge test -vvv
+```
+
+```bash Check Coverage
+forge coverage
+```
+</CodeGroup>
+
+Test scenarios cover:
+
+- **Error reverts** (e.g., `MemberVote__AlreadyVoted`, `MemberVote__InvalidEntryFee`)
+- **State transitions** across workflow stations
+- **Vote persistence** during the Resetting phase
+- **Access control** for owner-only functions
+
+## Project Structure
+
+Understanding the codebase organization:
+
+```
+Voting-Dapp/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx          # Main entry point
+│   │   ├── layout.tsx        # Root layout with providers
+│   │   └── providers.tsx     # Wagmi + RainbowKit setup
+│   ├── components/
+│   │   ├── VotingCard.tsx    # Individual voting option
+│   │   ├── DashboardGrid.tsx # Main dashboard
+│   │   ├── AdminPanel.tsx    # Owner controls
+│   │   └── Header.tsx        # Navigation with wallet connect
+│   ├── hooks/
+│   │   └── useMemberVote.ts  # Core contract interaction hook
+│   ├── constants/
+│   │   └── index.ts          # Contract address & ABI
+│   └── rainbowKitConfig.tsx  # Network configuration
+├── test/
+│   └── components/           # Vitest test suite
+└── package.json
+```
+
+### Key Files
+
+<AccordionGroup>
+  <Accordion title="useMemberVote.ts" icon="react">
+    The core hook that manages all contract interactions:
+
+    ```typescript
+    // src/hooks/useMemberVote.ts
+    export const useMemberVote = () => {
+      const { address, isConnected } = useAccount();
+      const { writeContract, data: hash, isPending } = useWriteContract();
+
+      // Read contract state
+      const { data: workflowStation } = useReadContract({
+        address: ContractAddress,
+        abi: ABI,
+        functionName: "getWorkflowStation",
+      });
+
+      // Cast vote function
+      const castVote = (option: number) => {
+        writeContract({
+          address: ContractAddress,
+          abi: ABI,
+          functionName: "vote",
+          args: [BigInt(option)],
+          value: parseEther("0.01"),
+        });
+      };
+
+      return {
+        workflowStation: workflowStation !== undefined ? Number(workflowStation) : 0,
+        castVote,
+        isOwner,
+        hasVoted,
+        // ... other state and functions
+      };
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="constants/index.ts" icon="file-code">
+    Contains the contract address and ABI:
+
+    ```typescript
+    // src/constants/index.ts
+    export const ContractAddress = "0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712";
+
+    export const ABI = [
+      // Full contract ABI including:
+      // - vote(uint256 option) payable
+      // - getWorkflowStation() view
+      // - addressVoted(address) view
+      // - startVote() (owner only)
+      // - resetVotes() (owner only)
+      // - withdraw() (owner only)
+    ];
+    ```
+  </Accordion>
+
+  <Accordion title="VotingCard.tsx" icon="square-poll-vertical">
+    Renders individual voting options with real-time data:
+
+    ```tsx
+    // src/components/VotingCard.tsx
+    export const VotingCard = ({ title, optionId, votes, totalVotes, hasVoted }) => {
+      const { castVote, isPending, workflowStation } = useMemberVote();
+      const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
+      const isVotingOpen = workflowStation === 1;
+      const canVote = isVotingOpen && !hasVoted && !isPending;
+
+      return (
+        <Card>
+          {/* Vote count and percentage display */}
+          <Button
+            disabled={!canVote}
+            onClick={() => castVote(optionId)}
+          >
+            {isPending ? "Processing..." : hasVoted ? "Vote Recorded" : "Cast Your Vote"}
+          </Button>
+        </Card>
+      );
+    };
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Local Development with Anvil
+
+To test with a local blockchain:
+
+<Steps>
+  <Step title="Start Anvil">
+    Run a local Ethereum node:
+
+    ```bash
+    anvil
+    ```
+
+    Anvil starts on `http://127.0.0.1:8545` with pre-funded test accounts.
+  </Step>
+
+  <Step title="Deploy Contract Locally">
+    Navigate to the smart contract repository and deploy:
+
+    ```bash
+    forge script script/DeployMemberVote.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+    ```
+  </Step>
+
+  <Step title="Update Contract Address">
+    Copy the deployed address and update `src/constants/index.ts`:
+
+    ```typescript
+    export const ContractAddress = "0xYourLocalContractAddress";
+    ```
+  </Step>
+
+  <Step title="Connect Wallet to Anvil">
+    In MetaMask, add the Anvil network and import one of the test accounts using its private key (displayed in the Anvil terminal).
+  </Step>
+</Steps>
+
+## Build for Production
+
+Create an optimized production build:
+
+<CodeGroup>
+```bash Build
+npm run build
+```
+
+```bash Start Production Server
+npm run start
+```
+</CodeGroup>
+
+The production build:
+
+- Optimizes bundle size with Next.js 16's app router
+- Enables React Compiler for better performance
+- Removes development-only code
+- Generates static assets where possible
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Module Not Found Errors">
+    Clear your node_modules and reinstall:
+
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+
+  <Accordion title="RPC Connection Issues">
+    If you can't connect to Sepolia, try these public RPCs:
+
+    ```typescript
+    transports: {
+      [sepolia.id]: http('https://rpc.sepolia.org'),
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Wallet Not Connecting">
+    Ensure your `.env.local` has a valid WalletConnect Project ID. Clear your browser cache and try again.
+  </Accordion>
+
+  <Accordion title="Contract Read Errors">
+    Verify the contract address matches the deployed contract on your selected network. Check Etherscan to confirm the contract is deployed.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Cast Your First Vote" icon="check-to-slot" href="/quickstart">
+    Follow the quickstart guide to interact with VoteLab
+  </Card>
+  <Card title="Smart Contract Docs" icon="file-contract" href="https://github.com/Pragyat-Nikunj/Smart-Voting-Contract">
+    Deep dive into the Solidity architecture
+  </Card>
+</CardGroup>

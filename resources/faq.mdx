@@ -1,0 +1,232 @@
+---
+title: Frequently Asked Questions
+description: Common questions about using VoteLab's decentralized voting system
+---
+
+## General Questions
+
+<AccordionGroup>
+  <Accordion title="What is VoteLab?">
+    VoteLab is a professional-grade decentralized voting application (DApp) built on blockchain technology. It features a three-stage state machine, automated winner determination, and secure administrative controls. The platform is designed for organizational governance with a focus on type safety, on-chain security, and financial integrity.
+  </Accordion>
+
+  <Accordion title="What wallets are supported?">
+    VoteLab supports any wallet compatible with:
+    - **ConnectKit/RainbowKit**: Popular wallet connection libraries
+    - **Wagmi v2**: Modern Web3 wallet integration
+    - **MetaMask**, **WalletConnect**, **Coinbase Wallet**, and other EVM-compatible wallets
+
+    Simply connect your preferred Web3 wallet through the interface to participate in voting.
+  </Accordion>
+
+  <Accordion title="Which blockchain networks are supported?">
+    VoteLab is deployed on EVM-compatible networks. The current contract address is:
+    ```
+    0x6A71C004F1E51Cbe7B95f7E63EC1320DDd635712
+    ```
+
+    Check the application interface for the specific network you need to connect to.
+  </Accordion>
+</AccordionGroup>
+
+## Voting Process
+
+<AccordionGroup>
+  <Accordion title="How much does it cost to vote?">
+    The entry fee to cast a vote is **0.01 ETH** (or equivalent in the native token of the network).
+
+    This fee serves multiple purposes:
+    - **Sybil attack prevention**: Prevents spam and malicious voting
+    - **Prize pool creation**: All entry fees accumulate in the contract
+    - **Financial integrity**: Ensures participants have a stake in the outcome
+
+    The entry fee is defined in the contract constructor and remains constant throughout the election lifecycle.
+  </Accordion>
+
+  <Accordion title="Can I vote multiple times?">
+    **No.** Each address can only vote once per election cycle. If you attempt to vote again, the transaction will revert with the error:
+    ```
+    MemberVote__AlreadyVoted
+    ```
+
+    The contract tracks voters using the `addressVoted` mapping, which records your election ID when you vote. Once you've voted in the current election, you must wait until the next election cycle begins.
+  </Accordion>
+
+  <Accordion title="What happens if I send the wrong entry fee?">
+    The transaction will fail with the error:
+    ```
+    MemberVote__InvalidEntryFee
+    ```
+
+    You must send exactly **0.01 ETH** with your vote transaction. The contract enforces this requirement strictly:
+    - Sending too little will be rejected
+    - Sending too much will be rejected
+
+    The useMemberVote hook automatically sets the correct value using `parseEther("0.01")` when you vote through the interface.
+  </Accordion>
+
+  <Accordion title="Can I change my vote after submitting?">
+    **No.** Votes are immutable once submitted to the blockchain. This ensures:
+    - **Transparency**: No one can manipulate results after voting
+    - **Trust**: All votes are permanently recorded on-chain
+    - **Integrity**: The election results cannot be tampered with
+
+    Make sure you select the correct option before confirming your transaction.
+  </Accordion>
+</AccordionGroup>
+
+## Workflow States
+
+<AccordionGroup>
+  <Accordion title="What are the three workflow states?">
+    VoteLab operates on a strict **Finite State Machine (FSM)** with three states:
+
+    ### 1. Registering (State 0)
+    - The entry point for new elections
+    - Voting is **disabled** during this phase
+    - Admin prepares the proposal and sets up the election
+    - No votes can be cast
+
+    ### 2. Voting (State 1)
+    - Polls are **open** for participation
+    - Users can cast votes by paying the entry fee (0.01 ETH)
+    - Each address can vote once
+    - Vote counts accumulate in real-time
+
+    ### 3. Resetting (State 2)
+    - Voting is **closed**
+    - Results are locked and visible
+    - Winner is displayed on the dashboard
+    - Admin can sweep collected fees
+    - Vote counts are preserved for visualization before being cleared
+
+    <Note>
+      The workflow state can be checked using the `getWorkflowStation()` contract function, which returns 0, 1, or 2 corresponding to the states above.
+    </Note>
+  </Accordion>
+
+  <Accordion title="How do I know what state the election is in?">
+    The VoteLab interface automatically displays the current workflow state:
+
+    - **Dashboard indicators**: Visual cues show the active state
+    - **Admin HUD**: (Owner only) Displays state-specific controls
+    - **Hook integration**: The `useMemberVote` hook exposes `workflowStation` property
+
+    You can also check programmatically:
+    ```typescript
+    const { workflowStation } = useMemberVote();
+    // 0 = Registering, 1 = Voting, 2 = Resetting
+    ```
+  </Accordion>
+
+  <Accordion title="What happens if I try to vote in the wrong state?">
+    Attempting to vote during the **Registering** or **Resetting** states will cause your transaction to revert with:
+    ```
+    MemberVote__WrongWorkflowStation
+    ```
+
+    Votes can only be cast during the **Voting** state (state 1). The smart contract enforces this at the protocol level, ensuring no votes can be manipulated by being cast at inappropriate times.
+  </Accordion>
+</AccordionGroup>
+
+## Admin & Security
+
+<AccordionGroup>
+  <Accordion title="Who can control the election lifecycle?">
+    **Only the contract owner** (the address that deployed the contract) can:
+    - Start elections with `startVote()`
+    - Close voting with `resetVotes()`
+    - Withdraw funds with `withdraw()`
+
+    All admin functions are protected by the `onlyOwner` modifier. Attempting to call these functions from any other address will revert with:
+    ```
+    MemberVote__NotOwner
+    ```
+
+    The owner address can be retrieved using `getOwner()` and is checked in the frontend:
+    ```typescript
+    isOwner: address?.toLowerCase() === ownerAddress?.toLowerCase()
+    ```
+  </Accordion>
+
+  <Accordion title="Where do the voting fees go?">
+    All entry fees (0.01 ETH per vote) accumulate in the smart contract's balance. This creates a **prize pool** that:
+
+    - Is transparently visible to all participants
+    - Can be tracked in real-time through the contract balance
+    - Is secured by the smart contract until withdrawal
+
+    The contract owner can withdraw the entire balance using the **Sweep Funds** function, typically during the **Resetting** phase after the election concludes.
+
+    <Warning>
+      The `withdraw()` function transfers the entire contract balance to the owner. Make sure this aligns with your governance rules.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Is my vote private?">
+    **No.** VoteLab is built on public blockchain technology, which means:
+
+    - All votes are recorded on-chain and publicly visible
+    - Anyone can see which address voted for which option
+    - Transaction history is permanently stored on the blockchain
+
+    This transparency is a feature, not a bug—it ensures:
+    - **Auditability**: Results can be independently verified
+    - **Trust**: No hidden manipulation of votes
+    - **Accountability**: All participants can verify the outcome
+
+    If you require private voting, consider using a separate wallet address that is not publicly linked to your identity.
+  </Accordion>
+</AccordionGroup>
+
+## Technical Questions
+
+<AccordionGroup>
+  <Accordion title="What technology stack is VoteLab built with?">
+    VoteLab uses modern, production-grade technologies:
+
+    **Smart Contract Layer:**
+    - Solidity v0.8.18
+    - Foundry testing framework
+
+    **Frontend Layer:**
+    - Next.js 16 (App Router)
+    - TypeScript for type safety
+    - Wagmi v2 & Viem for Web3 integration
+    - Tailwind CSS for styling
+    - Vitest & React Testing Library for testing
+
+    **Key Features:**
+    - Type-safe contract interactions
+    - Automated transaction receipt handling
+    - Real-time state synchronization
+    - Glass-morphism UI design
+  </Accordion>
+
+  <Accordion title="How does the automatic winner calculation work?">
+    The winner is determined by comparing vote counts:
+
+    ```typescript
+    const { optionAVotes, optionBVotes } = useMemberVote();
+    ```
+
+    The dashboard dynamically calculates and showcases the winner once voting concludes (during the **Resetting** state). The contract preserves vote counts during this phase specifically for frontend visualization before clearing state for the next election.
+
+    <Note>
+      Winner determination is purely mathematical—there's no subjective logic. The option with more votes wins.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Does VoteLab support more than two options?">
+    The current implementation supports **two options** (Option A and Option B). The contract tracks:
+    - `optionAVotes`: Number of votes for Option A
+    - `optionBVotes`: Number of votes for Option B
+
+    Voting for any other option will revert with:
+    ```
+    MemberVote__InvalidOption
+    ```
+
+    For multi-option voting, the contract architecture would need to be extended. Consider forking the project if you need this functionality.
+  </Accordion>
+</AccordionGroup>
