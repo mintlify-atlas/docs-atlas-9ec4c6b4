@@ -1,0 +1,117 @@
+{
+  "projectType": "saas",
+  "projectName": "VoteLab",
+  "projectDescription": "Production-grade Web3 voting protocol with three-stage state machine, automated winner determination, and secure admin controls.",
+  "theme": "aspen",
+  "primaryColor": "#6366f1",
+  "lightColor": "#818cf8",
+  "darkColor": "#4f46e5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/workflow-states",
+              "concepts/security-model"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/connecting-wallet",
+              "guides/casting-votes",
+              "guides/viewing-results"
+            ]
+          },
+          {
+            "group": "Admin Guides",
+            "pages": [
+              "admin/overview",
+              "admin/managing-elections",
+              "admin/fund-management"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Smart Contract",
+            "pages": [
+              "api/contract-overview",
+              "api/read-functions",
+              "api/write-functions",
+              "api/errors"
+            ]
+          },
+          {
+            "group": "Frontend Integration",
+            "pages": [
+              "api/hooks",
+              "api/components",
+              "api/constants"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/testing",
+              "development/deployment"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/faq",
+              "resources/troubleshooting",
+              "resources/contributing"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Three-stage finite state machine (Registering → Voting → Resetting)",
+    "Entry fee mechanism to prevent sybil attacks",
+    "Real-time vote counting and winner determination",
+    "Secure admin controls with onlyOwner access pattern",
+    "Prize pool management with sweep functionality",
+    "Wallet integration via RainbowKit and Wagmi",
+    "Comprehensive test coverage with Vitest and Foundry"
+  ],
+  "publicApiSurface": [
+    "useMemberVote() - Main React hook for contract interaction",
+    "castVote(option: number) - Submit a vote with entry fee",
+    "startVote() - Admin function to open polls",
+    "resetVotes() - Admin function to close voting and tally results",
+    "withdrawFunds() - Admin function to collect entry fees",
+    "getWorkflowStation() - Query current election state",
+    "getOptionAVotes() - Query votes for Option A",
+    "getOptionBVotes() - Query votes for Option B",
+    "getOwner() - Query contract owner address",
+    "addressVoted(voter: address) - Check if address has voted",
+    "AdminPanel - Admin control component",
+    "VotingCard - Voting interface component",
+    "DashboardGrid - Results display component"
+  ]
+}
